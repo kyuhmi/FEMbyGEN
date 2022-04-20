@@ -174,8 +174,10 @@ class ResultsPanel:
                         # If value is greater than maximum, set it to full intensity
                         normVal = 1.0
                     else:
-                        # Normalise the value between 0-1 for the value range of that column
-                        normVal = (value - minVal) / valRange
+                        if valRange!=0:
+                            normVal = (value - minVal) / valRange
+                        else:
+                            normVal=0
 
                     hue = 0.4
                     col = hsvToRgb(hue, normVal, 1.0)
