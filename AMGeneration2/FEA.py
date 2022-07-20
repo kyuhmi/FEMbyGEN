@@ -150,7 +150,7 @@ def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius):
     # generate mesh
     mesh = doc.addObject('Fem::FemMeshShapeNetgenObject', 'FEMMeshNetgen')
     mesh.Shape = doc.Body
-    mesh.MaxSize = 1000
+    mesh.MaxSize = 200
     mesh.Optimize = True
     mesh.SecondOrder = True
     # set meshing parameters from function inputs
