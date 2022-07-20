@@ -6,6 +6,7 @@ import PySide
 import operator
 import Common
 import csv
+import numpy as np
 
 class GenerateCommand():
     """Produce part generations"""
@@ -33,10 +34,20 @@ class GeneratePanel():
         guiPath = FreeCAD.getUserAppDataDir() + "Mod/AMGeneration2/Generate.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        
 
         # Data variables for parameter table
         self.parameterNames = []
-        self.parameterValues = []
+        self.parameterValues = []  
+        
+
+        for i in range(3):
+            a=FreeCAD.activeDocument().Parameters.get(f'B{i+2}')
+            self.parameterNames.append(a)
+
+        for i in range(3):
+            b=FreeCAD.activeDocument().Parameters.get(f'C{i+2}')
+            self.parameterValues.append(b)
 
         readyText = "Ready"
 
@@ -44,19 +55,9 @@ class GeneratePanel():
         (self.parameterNames, self.parameterValues) = Common.checkGenParameters()
         print(self.parameterNames)
         print(self.parameterValues)
+        
 
-        # Check if parameters.txt file has been made
-        if os.path.isfile(self.workingDir + "/Parameters.txt"):
-            # Read parameter names from Parameters.txt and store them
-            f = open(self.workingDir + "/Parameters.txt")
-            text = f.read()
-            table = [line.split(",") for line in text.split("\n")]
-            self.parameterNames = [line[0] for line in table]
-            self.parameterNames = self.parameterNames[0:-1] # Remove the last name, it is always blank
-        else:
-            readyText = "Parameters not defined"
-
-        ## Check if any generations have been made already, and up to what number
+        # Check if any generations have been made already, and up to what number
         numGens = self.checkGenerations()
 
         self.form.numGensLabel.setText(str(numGens) + " generations produced")
@@ -71,24 +72,90 @@ class GeneratePanel():
         self.updateParametersTable()
 
     def generateParts(self):
-        numGenerations = self.form.NumGenerations.value()
+
         docPath = FreeCAD.ActiveDocument.FileName
         docName = FreeCAD.ActiveDocument.Name
 
-        # Close the active document so that it doesn't interfere with the generation process
-        FreeCAD.closeDocument(docName)
 
-        for i in range(numGenerations):
+        
+        # Getting spreadsheet from FreeCAD
+        self.paramsheet=FreeCAD.activeDocument().getObject("Spreadsheet")
+
+        self.paramNames = []
+        self.mins = []
+        self.maxs = []
+        self.numberofgen=[]
+        self.numgenerations=[]
+        self.detection=[]
+        self.inumber=[]
+        
+        # Getting number of parameters
+        try:
+            for i in range(99):
+                self.detection.append(FreeCAD.activeDocument().Parameters.get(f'C{i+2}'))
+        except:          
+            self.inumber.append(i)
+       
+        # self.param=[] 
+        
+        #  Getting datas from Spreadsheet
+        for i in range(self.inumber[0]):
+            self.paramNames.append(FreeCAD.activeDocument().Parameters.get(f'B{i+2}'))
+            self.mins.append(float(FreeCAD.activeDocument().Parameters.get(f'C{i+2}')))
+            self.maxs.append(float(FreeCAD.activeDocument().Parameters.get(f'D{i+2}')))
+            self.numberofgen.append(int(FreeCAD.activeDocument().Parameters.get(f'E{i+2}')))
+            # self.param.append(np.linspace(self.mins[i],self.maxs[i],self.numberofgen[i]))
+        self.a=np.linspace(self.mins[0],self.maxs[0],self.numberofgen[0])
+        self.b=np.linspace(self.mins[1],self.maxs[1],self.numberofgen[1])
+        self.c=np.linspace(self.mins[2],self.maxs[2],self.numberofgen[2])
+        
+        # Generating new values
+        for i in range(len(self.a)):
+            for j in range(len(self.b)):
+                for k in range(len(self.c)):
+                    numbers=[self.a[i],self.b[j],self.c[k]]
+                    self.numgenerations.append(numbers)
+                    
+            
+
+        
+        for i in range(len(self.numgenerations)):
             FreeCAD.open(docPath)
             FreeCAD.setActiveDocument(docName)
 
             # Produce part generation
-            self.generate(i)
+
+            for j in range(len(self.numgenerations)):
+                for k in range(self.inumber[0]):
+                    
+                    FreeCAD.activeDocument().Parameters.set(f'C{k+2}',f'{self.numgenerations[j][k]}')
+                    FreeCAD.activeDocument().Parameters.clear(f'D1:D{k+2}')
+                    FreeCAD.activeDocument().Parameters.clear(f'E1:E{k+2}')
+            
+        ## Regenerate the part and save generation as .stl and FreeCAD doc
+                    FreeCAD.ActiveDocument.recompute()
+                    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        ##  Save CAD part
+                    filename = "Gen" + str(j)
+                    extension = ".FCStd"
+                    filePath = workingDir + "/" + filename + extension
+                    FreeCAD.ActiveDocument.saveAs(filePath)
+
+        ## Save STL model
+                    filename = "Gen" + str(j)
+                    extension = ".stl"
+                    filePath = workingDir + "/" + filename + extension
+                    objects = []
+                    objects.append(FreeCAD.ActiveDocument.getObject("Body"))
+                    Mesh.export(objects, filePath)
+            
+            
+            
 
             FreeCAD.closeDocument(docName)
-
+        
             # Update progress bar
-            progress = ((i+1)/numGenerations) * 100
+            progress = ((i+1)/len(self.numgenerations)) * 100
             self.form.progressBar.setValue(progress)
 
         # Reopen document again once finished
@@ -190,8 +257,8 @@ class GeneratePanel():
         filePath = self.workingDir + "/GeneratedParameters.txt"
         with open(filePath, "w", newline='') as my_csv:
             csvWriter = csv.writer(my_csv, delimiter=',')
-            csvWriter.writerow(self.parameterNames)
-            csvWriter.writerows(self.parameterValues)
+            csvWriter.writerow(self.paramNames)
+            csvWriter.writerows(self.numgenerations)
 
 
     def viewGeneration(self):
@@ -238,83 +305,6 @@ class GeneratePanel():
         #return QDialogButtonBox.Close | QDialogButtonBox.Ok
         pass
 
-    def generate(self, genNumber):
-        ## Read parameters from text file
-        workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        f = open(workingDir + "/Parameters.txt", "r")
-        lines = f.read().split("\n")
-        f.close()
-
-        ## Save parameters into arrays
-        paramNames = []
-        mins = []
-        maxs = []
-        for line in lines:
-            if line != "":
-                # print(line)
-                (name, min, max) = line.split(",")
-                paramNames.append(name)
-                mins.append(float(min))
-                maxs.append(float(max))
-
-        numParams = len(paramNames)
-        #print("There are " + str(numParams) + " parameters")
-
-        ## Find the constraint objects where each parameter is located
-        objects = []
-        indexes = []
-        constraints = []
-        for paramName in paramNames:
-            paramFound = False
-            for object in FreeCAD.ActiveDocument.Objects:
-                if object.TypeId == "Sketcher::SketchObject":
-                    for i, constraint in enumerate(object.Constraints):
-                        if constraint.Name == paramName:
-                            paramFound = True
-                            constraints.append(constraint)
-                            indexes.append(i)
-                            objects.append(object)
-                            break
-                if paramFound:
-                    break
-            if not paramFound:
-                print("ERROR: " + paramName + " parameter not found in document")
-
-        self.parameterValues.append([])
-
-        ## Generate new values for each parameter and assign them
-        for i in range(numParams):
-            # Generate value
-            min = mins[i]
-            max = maxs[i]
-            valueRange = max - min
-            newValue = min + random() * valueRange
-
-            try:
-                # Assign value to corresponding constraint object
-                objects[i].setDatum(indexes[i], FreeCAD.Units.Quantity(newValue))
-                self.parameterValues[-1].append(str(round(newValue, 2)))
-            except:
-                paramName = constraints[i].Name
-                self.parameterValues[-1].append("N/A")
-                print("ERROR: Modifying parameter '" + paramName + "' failed.")
-
-        ## Regenerate the part and save generation as .stl and FreeCAD doc
-        FreeCAD.ActiveDocument.recompute()
-
-        ##  Save CAD part
-        filename = "Gen" + str(genNumber)
-        extension = ".FCStd"
-        filePath = workingDir + "/" + filename + extension
-        FreeCAD.ActiveDocument.saveAs(filePath)
-
-        ## Save STL model
-        filename = "Gen" + str(genNumber)
-        extension = ".stl"
-        filePath = workingDir + "/" + filename + extension
-        objects = []
-        objects.append(FreeCAD.ActiveDocument.getObject("Body"))
-        Mesh.export(objects, filePath)
 
 
 FreeCADGui.addCommand('Generate', GenerateCommand())
