@@ -8,9 +8,9 @@ class AMWorkbenchv2(Workbench):
     def Initialize(self):
         """This function is executed when FreeCAD starts"""
         #import MyModuleA, MyModuleB  # import here all the needed files that create your FreeCAD commands
-        import Initiate, Generate, FEA, Results, Refine
+        import Initiate, Alias, Generate, FEA, Results, Refine
         FreeCADGui.addIconPath(FreeCAD.getUserAppDataDir() + "Mod/AMGeneration2/")
-        self.list = ["Initiate", "Generate", "FEA", "Refine", "Results"]  # A list of command names created in the line above
+        self.list = ["Initiate", "Alias","Generate", "FEA", "Refine", "Results"]  # A list of command names created in the line above
         self.appendToolbar("Commands", self.list)  # creates a new toolbar with your commands
         self.appendMenu("AM Generation v2", self.list)  # creates a new menu
 
