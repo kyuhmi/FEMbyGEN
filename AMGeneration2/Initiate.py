@@ -36,6 +36,8 @@ class InitiatePanel:
         FreeCAD.ActiveDocument.Parameters.setStyle('D1:D1', 'bold', 'add')
         self.paramsheet.set('E1','Number of Generations')
         FreeCAD.ActiveDocument.Parameters.setStyle('E1:E1', 'bold', 'add')
+        self.paramsheet.set('G1','Mesh Size')
+        FreeCAD.ActiveDocument.Parameters.setStyle('G1:G1', 'bold', 'add')
         FreeCAD.ActiveDocument.recompute() 
 
 FreeCADGui.addCommand('Initiate', InitiateCommand())
