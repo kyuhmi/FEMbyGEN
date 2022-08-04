@@ -144,16 +144,19 @@ class FEAPanel:
 def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius):
     # Get document handle to part that was just generated
     doc = FreeCAD.ActiveDocument
-
+    
+    meshsizee=FreeCAD.activeDocument().Parameters.get('G2')
+    print(meshsizee)
     analysis_object = doc.Analysis
 
     # generate mesh
     mesh = doc.addObject('Fem::FemMeshShapeNetgenObject', 'FEMMeshNetgen')
     mesh.Shape = doc.Body
-    mesh.MaxSize = 200
+    mesh.MaxSize = meshsizee
     mesh.Optimize = True
     mesh.SecondOrder = True
     # set meshing parameters from function inputs
+    # print(mesh.Maxsize)
     if fineness == "UserDefined":
         mesh.GrowthRate = growthRate
         mesh.NbSegsPerEdge = segsPerEdge
@@ -212,3 +215,4 @@ def hsvToRgb(h, s, v):
         return v, p, q
 
 FreeCADGui.addCommand('FEA', FEACommand())
+
