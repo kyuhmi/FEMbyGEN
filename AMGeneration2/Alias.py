@@ -31,6 +31,7 @@ class AliasPanel:
         for i in range(10):
             try:
                 FreeCAD.ActiveDocument.Parameters.setAlias(f'C{i+2}', FreeCAD.ActiveDocument.Parameters.get(f'B{i+2}'))
+                FreeCAD.ActiveDocument.Parameters.recompute()
             except:
                 pass
 FreeCADGui.addCommand('Alias', AliasCommand())
