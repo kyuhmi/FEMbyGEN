@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jul 27 16:35:28 2022
-
-@author: trial
-"""
-
 import FreeCAD, FreeCADGui, Part, Mesh
 import PySide
 
