@@ -13,7 +13,7 @@ class AliasCommand():
     """Analyse the generated parts"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'Alias.png',  # the name of a svg file available in the resources
+        return {'Pixmap'  : 'fembygen/Alias.png',  # the name of a svg file available in the resources
                 'Accel' : "Shift+A",  # a default shortcut (optional)
                 'MenuText': "Alias",
                 'ToolTip' : "Alias in spreadsheet"}

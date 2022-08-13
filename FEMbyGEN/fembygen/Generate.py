@@ -1,10 +1,11 @@
+from genericpath import isdir
 import FreeCAD, FreeCADGui, Part, Mesh
 import os.path
 import shutil
 from random import random
 import PySide
 import operator
-import Common
+from fembygen import Common
 import csv
 import numpy as np
 
@@ -31,7 +32,7 @@ class GenerateCommand():
 class GeneratePanel():
     def __init__(self):
         # this will create a Qt widget from our ui file
-        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/Generate.ui"
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Generate.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
         
@@ -124,34 +125,25 @@ class GeneratePanel():
             FreeCAD.setActiveDocument(docName)
 
             # Produce part generation
-
-            for j in range(len(self.numgenerations)):
-                for k in range(self.inumber[0]):
+            for k in range(self.inumber[0]):
                     
-                    FreeCAD.activeDocument().Parameters.set(f'C{k+2}',f'{self.numgenerations[j][k]}')
-                    FreeCAD.activeDocument().Parameters.clear(f'D1:D{k+2}')
-                    FreeCAD.activeDocument().Parameters.clear(f'E1:E{k+2}')
+                FreeCAD.activeDocument().Parameters.set(f'C{k+2}',f'{self.numgenerations[i][k]}')
+                FreeCAD.activeDocument().Parameters.clear(f'D1:D{k+2}')
+                FreeCAD.activeDocument().Parameters.clear(f'E1:E{k+2}')
+            FreeCAD.ActiveDocument.recompute()
             
-        ## Regenerate the part and save generation as .stl and FreeCAD doc
-                    FreeCAD.ActiveDocument.recompute()
-                    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        ##  Save CAD part
-                    filename = "Gen" + str(j)
-                    extension = ".FCStd"
-                    filePath = workingDir + "/" + filename + extension
-                    FreeCAD.ActiveDocument.saveAs(filePath)
+            ## Regenerate the part and save generation as FreeCAD doc
 
-        ## Save STL model
-                    filename = "Gen" + str(j)
-                    extension = ".stl"
-                    filePath = workingDir + "/" + filename + extension
-                    objects = []
-                    objects.append(FreeCAD.ActiveDocument.getObject("Body"))
-                    Mesh.export(objects, filePath)
-            
-            
-            
+            try:        
+                os.mkdir(self.workingDir + f"/Gen{i+1}")
+            except:
+                print(f"Please delete earlier generations: Gen{i+1} already exist in the folder")
 
+            filename = f"/Gen{i+1}/" + f"Gen{i+1}.FCStd"
+ 
+            filePath = self.workingDir + filename
+            FreeCAD.ActiveDocument.saveAs(filePath)
+ 
             FreeCAD.closeDocument(docName)
         
             # Update progress bar
@@ -172,31 +164,48 @@ class GeneratePanel():
         print("Generation done successfully!")
 
     def deleteGenerations(self):
+        print("Deleting...")
         numGens = self.checkGenerations()
-        for i in range(numGens):
-            fileName = self.workingDir + "/Gen" + str(i)
-            # Delete FreeCAD part and STL files
-            try:
-                os.remove(fileName + ".FCStd")
-                os.remove(fileName + ".stl")
-            except FileNotFoundError:
-                print("INFO: Generation " + str(i) + " not found")
-            except:
-                print("Error while trying to delete files for generation" + str(i))
+        for i in range(1,numGens):
+            fileName = self.workingDir + f"/Gen{i}/" + f"Gen{i}"
+            # print(fileName)
+            # # Delete FreeCAD part and STL files
+            # try:
+            #     os.remove(fileName + ".FCStd")
+            # except FileNotFoundError:
+            #     print("INFO: Generation " + str(i) + " not found")
+            # except:
+            #     print("Error while trying to delete files for generation" + str(i))
 
-            # Delete FreeCAD backup part files
-            try:
-                os.remove(fileName + ".FCStd1")
-            except FileNotFoundError:
-                pass
-            except:
-                print("Error while trying to delete backup part files for generation" + str(i))
+            # # Delete FreeCAD backup part files
+            # try:
+            #     os.remove(fileName + ".FCStd1")
+            # except FileNotFoundError:
+            #     passprint(fileName)
+            # # Delete FreeCAD part and STL files
+            # try:
+            #     os.remove(fileName + ".FCStd")
+            # except FileNotFoundError:
+            #     print("INFO: Generation " + str(i) + " not found")
+            # except:
+            #     print("Error while trying to delete files for generation" + str(i))
+
+            # # Delete FreeCAD backup part files
+            # try:
+            #     os.remove(fileName + ".FCStd1")
+            # except FileNotFoundError:
+            #     pass
+            # except:
+            #     print("Error while trying to delete backup part files for generation" + str(i))
+            # except:
+            #     print("Error while trying to delete backup part files for generation" + str(i))
 
             # Delete analysis directories
             try:
-                shutil.rmtree(fileName + "/")
+                shutil.rmtree(self.workingDir + f"/Gen{i}/")
+                print(self.workingDir + f"/Gen{i}/ silindi")
             except FileNotFoundError:
-                #print("INFO: Generation " + str(i) + " analysis data not found")
+                print("INFO: Generation " + str(i) + " analysis data not found")
                 pass
             except:
                 print("Error while trying to delete analysis folder for generation " + str(i))
@@ -245,9 +254,10 @@ class GeneratePanel():
         #self.form.parametersTable.dataChanged.emit(self.index(0, 0), self.index(0, 0))
 
     def checkGenerations(self):
-        numGens = 0
-        while os.path.isfile(self.workingDir + "/Gen" + str(numGens) + ".FCStd"):
+        numGens = 1
+        while os.path.isdir(self.workingDir + "/Gen" + str(numGens) ):
             numGens += 1
+
 
         self.resetViewControls(numGens)
 
@@ -304,7 +314,5 @@ class GeneratePanel():
         #return PySide.QtWidgets.QDialogButtonBox.Ok
         #return QDialogButtonBox.Close | QDialogButtonBox.Ok
         pass
-
-
 
 FreeCADGui.addCommand('Generate', GenerateCommand())

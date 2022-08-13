@@ -2,13 +2,12 @@ import os.path
 import os
 import time
 
-import Common
-import FRDParser
+from fembygen import Common
+from fembygen import FRDParser, Voxelise
 import FreeCAD
 import FreeCADGui
 import Part
 import PySide
-import Voxelise
 import numpy as np
 import operator
 
@@ -17,7 +16,7 @@ class RefineCommand():
     """Refine generations for Additive Manufacturing"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'Refine.svg',  # the name of a svg file available in the resources
+        return {'Pixmap'  : 'fembygen/Refine.svg',  # the name of a svg file available in the resources
                 'Accel' : "Shift+R",  # a default shortcut (optional)
                 'MenuText': "Refine",
                 'ToolTip' : "Refine generations for Additive Manufacturing"}
@@ -36,7 +35,7 @@ class RefinePanel:
     def __init__(self):
         # this will create a Qt widget from our ui file
 
-        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/Refine.ui"
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Refine.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
         self.selectedGen = -1

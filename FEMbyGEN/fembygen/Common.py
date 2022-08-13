@@ -1,6 +1,6 @@
 import FreeCAD, FreeCADGui, Part, Mesh
 import PySide, os.path
-import FRDParser
+from fembygen import FRDParser
 import numpy as np
 import copy
 

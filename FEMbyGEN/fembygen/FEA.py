@@ -1,16 +1,16 @@
 import FreeCAD, FreeCADGui, Part
 import os.path
-import FRDParser
+from fembygen import FRDParser
 import PySide, operator
 import time
-import Common
+from fembygen import Common
 
 
 class FEACommand():
     """Perform FEA on generated parts"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'FEA.svg',  # the name of a svg file available in the resources
+        return {'Pixmap'  : 'fembygen/FEA.svg',  # the name of a svg file available in the resources
                 'Accel' : "Shift+A",  # a default shortcut (optional)
                 'MenuText': "FEA Generations",
                 'ToolTip' : "Perform FEA on generated parts"}
@@ -29,7 +29,7 @@ class FEAPanel:
     def __init__(self):
         # this will create a Qt widget from our ui file
 
-        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/PerformFEA.ui"
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/PerformFEA.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
         self.numGenerations = self.checkGenerations()
