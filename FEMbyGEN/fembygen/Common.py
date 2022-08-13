@@ -6,20 +6,20 @@ import copy
 
 
 def checkGenerations():
-    numGens = 0
+    numGens = 1
     workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-    while os.path.isfile(workingDir + "/Gen" + str(numGens) + ".FCStd"):
+    while os.path.isdir(workingDir + "/Gen" + str(numGens) ):
         numGens += 1
 
-    return numGens
+    return numGens-1
 
 def searchAnalysed():
     numAnalysed = 0
     statuses = []
     numGenerations = checkGenerations()
     workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-    for i in range(numGenerations):
-        FRDPath = workingDir + "/Gen" + str(i) + "/SolverCcxTools/FEMMeshNetgen.frd"
+    for i in range(1,numGenerations+1):
+        FRDPath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
         if os.path.isfile(FRDPath):
             try:
                 # This returns an exception if analysis failed for this .frd file, because there is no results data
@@ -30,12 +30,14 @@ def searchAnalysed():
                 status = "Analysed"
                 numAnalysed += 1
         else:
+            print("analiz edilmeyen dosya: "+FRDPath)
             status = "Not analysed"
 
         statuses.append(status)
 
 
     return (statuses, numAnalysed)
+
 
 def writeAnalysisStatusToFile():
     workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
@@ -122,66 +124,66 @@ def checkGenParameters():
     return (header, parameters)
 
 
-def deleteGenerations(self):
-    numGens = self.checkGenerations()
-    for i in range(numGens):
-        fileName = self.workingDir + "/Gen" + str(i)
-        # Delete FreeCAD part and STL files
-        try:
-            os.remove(fileName + ".FCStd")
-            os.remove(fileName + ".stl")
-        except FileNotFoundError:
-            print("INFO: Generation " + str(i) + " not found")
-        except:
-            print("Error while trying to delete files for generation" + str(i))
+# def deleteGenerations(self):
+#     numGens = self.checkGenerations()
+#     for i in range(numGens):
+#         fileName = self.workingDir + "/Gen" + str(i)
+#         # Delete FreeCAD part and STL files
+#         try:
+#             os.remove(fileName + ".FCStd")
+#             os.remove(fileName + ".stl")
+#         except FileNotFoundError:
+#             print("INFO: Generation " + str(i) + " not found")
+#         except:
+#             print("Error while trying to delete files for generation" + str(i))
 
-        # Delete FreeCAD backup part files
-        try:
-            os.remove(fileName + ".FCStd1")
-        except FileNotFoundError:
-            pass
-        except:
-            print("Error while trying to delete backup part files for generation" + str(i))
+#         # Delete FreeCAD backup part files
+#         try:
+#             os.remove(fileName + ".FCStd1")
+#         except FileNotFoundError:
+#             pass
+#         except:
+#             print("Error while trying to delete backup part files for generation" + str(i))
 
-        # Delete analysis directories
-        try:
-            shutil.rmtree(fileName + "/")
-        except FileNotFoundError:
-            print("INFO: Generation " + str(i) + " analysis data not found")
-        except:
-            print("Error while trying to delete analysis folder for generation " + str(i))
+#         # Delete analysis directories
+#         try:
+#             shutil.rmtree(fileName + "/")
+#         except FileNotFoundError:
+#             print("INFO: Generation " + str(i) + " analysis data not found")
+#         except:
+#             print("Error while trying to delete analysis folder for generation " + str(i))
 
-    # Delete the GeneratedParameters.txt file
-    try:
-        os.remove(self.workingDir + "/GeneratedParameters.txt")
-    except FileNotFoundError:
-        print("INFO: GeneratedParameters.txt is missing")
-    except:
-        print("Error while trying to delete GeneratedParameters.txt")
+#     # Delete the GeneratedParameters.txt file
+#     try:
+#         os.remove(self.workingDir + "/GeneratedParameters.txt")
+#     except FileNotFoundError:
+#         print("INFO: GeneratedParameters.txt is missing")
+#     except:
+#         print("Error while trying to delete GeneratedParameters.txt")
 
-    # Delete the AnalysisStatus.txt file
-    try:
-        os.remove(self.workingDir + "/AnalysisStatus.txt")
-    except FileNotFoundError:
-        print("INFO: AnalysisStatus.txt is missing")
-    except:
-        print("Error while trying to delete AnalysisStatus.txt")
+#     # Delete the AnalysisStatus.txt file
+#     try:
+#         os.remove(self.workingDir + "/AnalysisStatus.txt")
+#     except FileNotFoundError:
+#         print("INFO: AnalysisStatus.txt is missing")
+#     except:
+#         print("Error while trying to delete AnalysisStatus.txt")
 
-    # Delete the RefinementResults.txt file
-    try:
-        os.remove(self.workingDir + "/RefinementResults.txt")
-    except FileNotFoundError:
-        print("INFO: RefinementResults.txt is missing")
-    except:
-        print("Error while trying to delete RefinementResults.txt")
+#     # Delete the RefinementResults.txt file
+#     try:
+#         os.remove(self.workingDir + "/RefinementResults.txt")
+#     except FileNotFoundError:
+#         print("INFO: RefinementResults.txt is missing")
+#     except:
+#         print("Error while trying to delete RefinementResults.txt")
 
-    # Delete the FEAMetrics.npy file
-    try:
-        os.remove(self.workingDir + "/FEAMetrics.npy")
-    except FileNotFoundError:
-        print("INFO: FEAMetrics.npy is missing")
-    except:
-        print("Error while trying to delete FEAMetrics.npy")
+#     # Delete the FEAMetrics.npy file
+#     try:
+#         os.remove(self.workingDir + "/FEAMetrics.npy")
+#     except FileNotFoundError:
+#         print("INFO: FEAMetrics.npy is missing")
+#     except:
+#         print("Error while trying to delete FEAMetrics.npy")
 
 def calcAndSaveFEAMetrics():
     workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
@@ -190,7 +192,7 @@ def calcAndSaveFEAMetrics():
     if numGenerations > 0:
         #table = [["Node Count", "Elem Count", "Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
         table = [["Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
-        for i in range(numGenerations):
+        for i in range(1,numGenerations+1):
             filePath = workingDir + "/Gen" + str(i) + "/SolverCcxTools/FEMMeshNetgen.frd"
 
             r = calculateFEAMetric(filePath)
@@ -332,6 +334,7 @@ def hsvToRgb(h, s, v):
 
 class GenTableModel(PySide.QtCore.QAbstractTableModel):
     def __init__(self, parent, itemList, header, colours=None, *args):
+
         PySide.QtCore.QAbstractTableModel.__init__(self, parent, *args)
         self.itemList = copy.deepcopy(itemList)
         self.header = header[:]
@@ -346,12 +349,11 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
 
         # Insert generation number column into table
         self.header.insert(0, "Gen")
-        for i in range(height):
-            self.itemList[i].insert(0, i)
-            self.colours[i].insert(0, defaultColour)
+        for i in range(1,height+1):
+            self.itemList[i-1].insert(0, i)
+            self.colours[i-1].insert(0, defaultColour)
 
-        #print(self.itemList)
-        #print(self.header)
+
 
     def updateColours(self, colours):
         for i, row in enumerate(colours):

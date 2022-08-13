@@ -4,7 +4,8 @@ from fembygen import FRDParser
 import PySide, operator
 import time
 from fembygen import Common
-
+import shutil
+import os
 
 class FEACommand():
     """Perform FEA on generated parts"""
@@ -43,53 +44,51 @@ class FEAPanel:
         # Link callback procedures
         self.form.startFEAButton.clicked.connect(self.FEAGenerations)
         self.form.finenessBox.activated.connect(self.finenessChanged)
+        self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
 
     def accept(self):
         pass
 
     def checkGenerations(self):
-        numGens = 0
-        while os.path.isfile(self.workingDir + "/Gen" + str(numGens) + ".FCStd"):
+        numGens = 1
+        print(self.workingDir)
+        while os.path.isdir(self.workingDir + "/Gen" + str(numGens) ):
             numGens += 1
+        return numGens-1
 
-        return numGens
 
-    def checkAnalyses(self):
-        numAnalysed = 0
-        for i in range(self.numGenerations):
-            FRDPath = self.workingDir + "/Gen" + str(i) + "/SolverCcxTools/FEMMeshNetgen.frd"
-            if os.path.isfile(FRDPath):
-                try:
-                    # This returns an exception if analysis failed for this .frd file, because there is no results data
-                    FRDParser.FRDParser(FRDPath)
-                except:
-                    self.stats.append(["Failed"])
+    def deleteGenerations(self):
+        print("Deleting...")
+        numGens = self.checkGenerations()
+        for i in range(1,numGens+1):
+            fileName = self.workingDir + f"/Gen{i}/"
+            files=os.listdir(fileName)
+            for j in files:
+
+                if  j[-6:]=="backup":
+                    pass
                 else:
-                    self.stats.append(["Analysed"])
-                    numAnalysed += 1
-            else:
-                self.stats.append(["Not analysed"])
-
-        return(numAnalysed)
+                    os.remove(self.workingDir+f"/Gen{i}/"+j)
+            os.rename(self.workingDir+f"/Gen{i}/Gen{i}.FCStd.backup",self.workingDir+f"/Gen{i}/Gen{i}.FCStd")
+        self.updateAnalysisTable()
 
     def FEAGenerations(self):
-        print("Started analysis")
+        print("Analysis starting")
 
         # Get FEA parameters from controls
         fineness = self.form.finenessBox.currentText()
         growthRate = self.form.growthRateBox.value()
         segsPerEdge = self.form.segsPerEdgeBox.value()
         segsPerRadius = self.form.segsPerRadiusBox.value()
-
         for i in range(self.numGenerations):
             # Open generated part
-            partName = "Gen" + str(i)
-            filePath = self.workingDir + "/" + partName + ".FCStd"
+            partName = f"Gen{i+1}" 
+            filePath = self.workingDir + f"/Gen{i+1}/Gen{i+1}.FCStd"
             FreeCAD.open(filePath)
             FreeCAD.setActiveDocument(partName)
 
             # Run FEA solver on generation
-            performFEA(fineness, growthRate, segsPerEdge, segsPerRadius)
+            performFEA(fineness, growthRate, segsPerEdge, segsPerRadius, i+1)
 
             # Close generated part
             FreeCAD.closeDocument(partName)
@@ -138,10 +137,11 @@ class FEAPanel:
             colours.append([colour, white])
 
         tableModel = Common.GenTableModel(self.form, table, header, colours=colours)
+        tableModel.layoutChanged.emit()
         self.form.tableView.setModel(tableModel)
 
 
-def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius):
+def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius,GenNumb):
     # Get document handle to part that was just generated
     doc = FreeCAD.ActiveDocument
     
@@ -169,12 +169,12 @@ def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius):
 
     # recompute
     doc.recompute()
-
+    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
     # run the analysis step by step
     from femtools import ccxtools
     fea = ccxtools.FemToolsCcx()
     fea.update_objects()
-    fea.setup_working_dir()
+    fea.setup_working_dir(workingDir)
     fea.setup_ccx()
     message = fea.check_prerequisites()
     if not message:
