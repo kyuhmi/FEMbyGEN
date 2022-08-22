@@ -1,15 +1,16 @@
 import FreeCAD, FreeCADGui, Part, PySide
 import os.path
-import FRDParser, operator
+from fembygen import FRDParser
+import operator
 import numpy as np
 import random
-import Common
+from fembygen import Common
 
 class ResultsCommand():
     """Show results of analysed generations"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'Results.svg',  # the name of a svg file available in the resources
+        return {'Pixmap'  : 'fembygen/Results.svg',  # the name of a svg file available in the resources
                 'Accel' : "Shift+R",  # a default shortcut (optional)
                 'MenuText': "Show Results",
                 'ToolTip' : "Show results of analysed generations"}
@@ -28,7 +29,7 @@ class ResultsCommand():
 class ResultsPanel:
     def __init__(self):
         # this will create a Qt widget from our ui file
-        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/Results.ui"
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Results.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
         self.numGenerations = self.checkGenerations()

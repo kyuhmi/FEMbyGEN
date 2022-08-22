@@ -3,8 +3,8 @@ import itertools
 
 import numpy as np
 
-import stltovoxel.perimeter
-from stltovoxel.util import manhattanDistance, removeDupsFromPointList
+import fembygen.stltovoxel.perimeter
+from fembygen.stltovoxel.util import manhattanDistance, removeDupsFromPointList
 
 def toIntersectingLines(mesh, height):
     relevantTriangles = list(filter(lambda tri: isAboveAndBelow(tri, height), mesh))

@@ -1,18 +1,20 @@
+from genericpath import isdir
 import FreeCAD, FreeCADGui, Part, Mesh
 import os.path
 import shutil
 from random import random
 import PySide
 import operator
-import Common
+from fembygen import Common
 import csv
 import numpy as np
+import itertools
 
 class GenerateCommand():
     """Produce part generations"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'Generate.svg', # the name of a svg file available in the resources
+        return {'Pixmap'  : 'fembygen/Generate.svg', # the name of a svg file available in the resources
                 'Accel' : "Shift+G", # a default shortcut (optional)
                 'MenuText': "Generate",
                 'ToolTip' : "Produce part generations"}
@@ -31,10 +33,12 @@ class GenerateCommand():
 class GeneratePanel():
     def __init__(self):
         # this will create a Qt widget from our ui file
-        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/Generate.ui"
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Generate.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
-        self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        
+        try:
+            self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        except:
+            print("Please open a file and create parameters spreadsheet by initialize button")
 
         # Data variables for parameter table
         self.parameterNames = []
@@ -53,10 +57,7 @@ class GeneratePanel():
 
         # First check if generations have already been made from GeneratedParameters.txt
         (self.parameterNames, self.parameterValues) = Common.checkGenParameters()
-        print(self.parameterNames)
-        print(self.parameterValues)
-        
-
+       
         # Check if any generations have been made already, and up to what number
         numGens = self.checkGenerations()
 
@@ -82,10 +83,10 @@ class GeneratePanel():
         self.paramsheet=FreeCAD.activeDocument().getObject("Spreadsheet")
 
         self.paramNames = []
-        self.mins = []
-        self.maxs = []
-        self.numberofgen=[]
-        self.numgenerations=[]
+        mins = []
+        maxs = []
+        numberofgen=[]
+        # self.numgenerations=[]
         self.detection=[]
         self.inumber=[]
         
@@ -96,62 +97,55 @@ class GeneratePanel():
         except:          
             self.inumber.append(i)
        
-        # self.param=[] 
+        self.param=[] 
         
         #  Getting datas from Spreadsheet
         for i in range(self.inumber[0]):
             self.paramNames.append(FreeCAD.activeDocument().Parameters.get(f'B{i+2}'))
-            self.mins.append(float(FreeCAD.activeDocument().Parameters.get(f'C{i+2}')))
-            self.maxs.append(float(FreeCAD.activeDocument().Parameters.get(f'D{i+2}')))
-            self.numberofgen.append(int(FreeCAD.activeDocument().Parameters.get(f'E{i+2}')))
+            mins=float(FreeCAD.activeDocument().Parameters.get(f'C{i+2}'))
+            maxs=float(FreeCAD.activeDocument().Parameters.get(f'D{i+2}'))
+            numberofgen=int(FreeCAD.activeDocument().Parameters.get(f'E{i+2}'))
+            self.param.append(np.linspace(mins,maxs,numberofgen))
             # self.param.append(np.linspace(self.mins[i],self.maxs[i],self.numberofgen[i]))
-        self.a=np.linspace(self.mins[0],self.maxs[0],self.numberofgen[0])
-        self.b=np.linspace(self.mins[1],self.maxs[1],self.numberofgen[1])
-        self.c=np.linspace(self.mins[2],self.maxs[2],self.numberofgen[2])
+        # self.a=np.linspace(self.mins[0],self.maxs[0],self.numberofgen[0])
+        # self.b=np.linspace(self.mins[1],self.maxs[1],self.numberofgen[1])
+        # self.c=np.linspace(self.mins[2],self.maxs[2],self.numberofgen[2])
         
         # Generating new values
-        for i in range(len(self.a)):
-            for j in range(len(self.b)):
-                for k in range(len(self.c)):
-                    numbers=[self.a[i],self.b[j],self.c[k]]
-                    self.numgenerations.append(numbers)
-                    
-            
-
+        # for i in range(len(self.a)):
+        #     for j in range(len(self.b)):
+        #         for k in range(len(self.c)):
+        #             numbers=[self.a[i],self.b[j],self.c[k]]
+        #             self.numgenerations.append(numbers)
         
+        # Combination of all parameters
+        self.numgenerations=list(itertools.product(*self.param))             
+         
         for i in range(len(self.numgenerations)):
             FreeCAD.open(docPath)
             FreeCAD.setActiveDocument(docName)
 
             # Produce part generation
-
-            for j in range(len(self.numgenerations)):
-                for k in range(self.inumber[0]):
+            for k in range(self.inumber[0]):
                     
-                    FreeCAD.activeDocument().Parameters.set(f'C{k+2}',f'{self.numgenerations[j][k]}')
-                    FreeCAD.activeDocument().Parameters.clear(f'D1:D{k+2}')
-                    FreeCAD.activeDocument().Parameters.clear(f'E1:E{k+2}')
+                FreeCAD.activeDocument().Parameters.set(f'C{k+2}',f'{self.numgenerations[i][k]}')
+                FreeCAD.activeDocument().Parameters.clear(f'D1:D{k+2}')
+                FreeCAD.activeDocument().Parameters.clear(f'E1:E{k+2}')
+            FreeCAD.ActiveDocument.recompute()
             
-        ## Regenerate the part and save generation as .stl and FreeCAD doc
-                    FreeCAD.ActiveDocument.recompute()
-                    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        ##  Save CAD part
-                    filename = "Gen" + str(j)
-                    extension = ".FCStd"
-                    filePath = workingDir + "/" + filename + extension
-                    FreeCAD.ActiveDocument.saveAs(filePath)
+            ## Regenerate the part and save generation as FreeCAD doc
 
-        ## Save STL model
-                    filename = "Gen" + str(j)
-                    extension = ".stl"
-                    filePath = workingDir + "/" + filename + extension
-                    objects = []
-                    objects.append(FreeCAD.ActiveDocument.getObject("Body"))
-                    Mesh.export(objects, filePath)
-            
-            
-            
+            try:        
+                os.mkdir(self.workingDir + f"/Gen{i+1}")
+            except:
+                print(f"Please delete earlier generations: Gen{i+1} already exist in the folder")
 
+            filename = f"/Gen{i+1}/" + f"Gen{i+1}.FCStd"
+ 
+            filePath = self.workingDir + filename
+            FreeCAD.ActiveDocument.saveAs(filePath)
+            shutil.copy(filePath,filePath+".backup")
+ 
             FreeCAD.closeDocument(docName)
         
             # Update progress bar
@@ -172,31 +166,15 @@ class GeneratePanel():
         print("Generation done successfully!")
 
     def deleteGenerations(self):
+        print("Deleting...")
         numGens = self.checkGenerations()
-        for i in range(numGens):
-            fileName = self.workingDir + "/Gen" + str(i)
-            # Delete FreeCAD part and STL files
-            try:
-                os.remove(fileName + ".FCStd")
-                os.remove(fileName + ".stl")
-            except FileNotFoundError:
-                print("INFO: Generation " + str(i) + " not found")
-            except:
-                print("Error while trying to delete files for generation" + str(i))
-
-            # Delete FreeCAD backup part files
-            try:
-                os.remove(fileName + ".FCStd1")
-            except FileNotFoundError:
-                pass
-            except:
-                print("Error while trying to delete backup part files for generation" + str(i))
-
+        for i in range(1,numGens+1):
             # Delete analysis directories
             try:
-                shutil.rmtree(fileName + "/")
+                shutil.rmtree(self.workingDir + f"/Gen{i}/")
+                print(self.workingDir + f"/Gen{i}/ deleted")
             except FileNotFoundError:
-                #print("INFO: Generation " + str(i) + " analysis data not found")
+                print("INFO: Generation " + str(i) + " analysis data not found")
                 pass
             except:
                 print("Error while trying to delete analysis folder for generation " + str(i))
@@ -243,15 +221,15 @@ class GeneratePanel():
         # Refresh the TableView control
         # self.form.parametersTable.clearSelection()
         #self.form.parametersTable.dataChanged.emit(self.index(0, 0), self.index(0, 0))
+        self.updateParametersTable()
 
     def checkGenerations(self):
-        numGens = 0
-        while os.path.isfile(self.workingDir + "/Gen" + str(numGens) + ".FCStd"):
+        numGens = 1
+        while os.path.isdir(self.workingDir + "/Gen" + str(numGens) ):
             numGens += 1
+        self.resetViewControls(numGens-1)
 
-        self.resetViewControls(numGens)
-
-        return numGens
+        return numGens-1
 
     def saveGenParamsToFile(self):
         filePath = self.workingDir + "/GeneratedParameters.txt"
@@ -263,8 +241,8 @@ class GeneratePanel():
 
     def viewGeneration(self):
         # Close the generation that the user might be viewing previously
-        if self.selectedGen >= 0:
-            docName = "Gen" +str(self.selectedGen)
+        if self.selectedGen > 0:
+            docName = f"Gen{self.selectedGen}" 
             FreeCAD.closeDocument(docName)
 
         # Find which generation is selected in the combo box
@@ -272,8 +250,8 @@ class GeneratePanel():
         self.selectedGen = int(str(self.selectedGen).split()[-1])
 
         # Open the generation
-        docPath = self.workingDir + "/Gen" + str(self.selectedGen) + ".FCStd"
-        docName = "Gen" +str(self.selectedGen)
+        docPath = self.workingDir + f"/Gen{self.selectedGen}/Gen{self.selectedGen}.FCStd"
+        docName = f"Gen{self.selectedGen}" 
         FreeCAD.open(docPath)
         FreeCAD.setActiveDocument(docName)
 
@@ -285,7 +263,7 @@ class GeneratePanel():
             self.form.viewGenButton.setEnabled(True)
             self.form.selectGenBox.setEnabled(True)
 
-            for i in range(numGens):
+            for i in range(1,numGens+1):
                 comboBoxItems.append("Generation " + str(i))
 
             self.form.selectGenBox.clear()
@@ -296,15 +274,14 @@ class GeneratePanel():
             self.form.selectGenBox.clear()
 
     def updateParametersTable(self):
-        self.tableModel = Common.GenTableModel(self.form, self.parameterValues, self.parameterNames)
-        self.form.parametersTable.setModel(self.tableModel)
-        #self.form.parametersTable.resizeColumnsToContents()
+        tableModel = Common.GenTableModel(self.form, self.parameterValues, self.parameterNames)
+        tableModel.layoutChanged.emit()
+        self.form.parametersTable.setModel(tableModel)
+        
 
     def getStandardButtons(self, *args):
         #return PySide.QtWidgets.QDialogButtonBox.Ok
         #return QDialogButtonBox.Close | QDialogButtonBox.Ok
         pass
-
-
 
 FreeCADGui.addCommand('Generate', GenerateCommand())

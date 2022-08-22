@@ -8,10 +8,10 @@ import zipfile
 from PIL import Image
 import numpy as np
 
-import stltovoxel.slice as slice
-import stltovoxel.stl_reader as stl_reader
-import stltovoxel.perimeter as perimeter
-from stltovoxel.util import arrayToWhiteGreyscalePixel, padVoxelArray
+import fembygen.stltovoxel.slice as slice
+import fembygen.stltovoxel.stl_reader as stl_reader
+import fembygen.stltovoxel.perimeter as perimeter
+from fembygen.stltovoxel.util import arrayToWhiteGreyscalePixel, padVoxelArray
 
 #from simple_3dviz import Mesh
 #from simple_3dviz.window import show
