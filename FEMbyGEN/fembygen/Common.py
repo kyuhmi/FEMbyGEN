@@ -193,7 +193,7 @@ def calcAndSaveFEAMetrics():
         #table = [["Node Count", "Elem Count", "Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
         table = [["Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
         for i in range(1,numGenerations+1):
-            filePath = workingDir + "/Gen" + str(i) + "/SolverCcxTools/FEMMeshNetgen.frd"
+            filePath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
 
             r = calculateFEAMetric(filePath)
             #result = [r["NodeCount"], r["ElemCount"], r["MaxStress"], r["MeanStress"], r["MaxDisp"], r["MeanDisp"]]
