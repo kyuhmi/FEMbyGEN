@@ -16,10 +16,14 @@ def checkGenerations():
 def searchAnalysed():
     numAnalysed = 0
     statuses = []
+    doc=FreeCAD.ActiveDocument
     numGenerations = checkGenerations()
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+    workingDir = '/'.join(doc.FileName.split('/')[0:-1])
     for i in range(1,numGenerations+1):
-        FRDPath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
+        if doc.Analysis.Content.find("Netgen") >0:
+            FRDPath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
+        elif doc.Analysis.Content.find("Gmsh") >0: 
+            FRDPath = workingDir + f"/Gen{i}/FEMMeshGmsh.frd"
         if os.path.isfile(FRDPath):
             try:
                 # This returns an exception if analysis failed for this .frd file, because there is no results data
@@ -29,10 +33,10 @@ def searchAnalysed():
             else:
                 status = "Analysed"
                 numAnalysed += 1
-        else:
-            print("analiz edilmeyen dosya: "+FRDPath)
-            status = "Not analysed"
+     
 
+        else:
+            status = "Not analysed"
         statuses.append(status)
 
 
@@ -194,7 +198,8 @@ def calcAndSaveFEAMetrics():
         table = [["Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
         for i in range(1,numGenerations+1):
             filePath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
-
+            if not os.path.isfile(filePath):
+                filePath = workingDir + f"/Gen{i}/FEMMeshGmsh.frd"
             r = calculateFEAMetric(filePath)
             #result = [r["NodeCount"], r["ElemCount"], r["MaxStress"], r["MeanStress"], r["MaxDisp"], r["MeanDisp"]]
             result = [r["MaxStress"], r["MeanStress"], r["MaxDisp"], r["MeanDisp"]]
@@ -352,6 +357,7 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
         for i in range(1,height+1):
             self.itemList[i-1].insert(0, i)
             self.colours[i-1].insert(0, defaultColour)
+
 
 
 

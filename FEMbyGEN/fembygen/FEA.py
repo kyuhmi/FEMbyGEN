@@ -1,4 +1,4 @@
-import FreeCAD, FreeCADGui, Part
+import FreeCAD, FreeCADGui, Part, Fem
 import os.path
 from fembygen import FRDParser
 import PySide, operator
@@ -43,7 +43,6 @@ class FEAPanel:
 
         # Link callback procedures
         self.form.startFEAButton.clicked.connect(self.FEAGenerations)
-        self.form.finenessBox.activated.connect(self.finenessChanged)
         self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
 
     def accept(self):
@@ -69,17 +68,11 @@ class FEAPanel:
                     pass
                 else:
                     os.remove(self.workingDir+f"/Gen{i}/"+j)
-            os.rename(self.workingDir+f"/Gen{i}/Gen{i}.FCStd.backup",self.workingDir+f"/Gen{i}/Gen{i}.FCStd")
+            shutil.copyfile(self.workingDir+f"/Gen{i}/Gen{i}.FCStd.backup",self.workingDir+f"/Gen{i}/Gen{i}.FCStd")
         self.updateAnalysisTable()
 
     def FEAGenerations(self):
         print("Analysis starting")
-
-        # Get FEA parameters from controls
-        fineness = self.form.finenessBox.currentText()
-        growthRate = self.form.growthRateBox.value()
-        segsPerEdge = self.form.segsPerEdgeBox.value()
-        segsPerRadius = self.form.segsPerRadiusBox.value()
         for i in range(self.numGenerations):
             # Open generated part
             partName = f"Gen{i+1}" 
@@ -88,7 +81,7 @@ class FEAPanel:
             FreeCAD.setActiveDocument(partName)
 
             # Run FEA solver on generation
-            performFEA(fineness, growthRate, segsPerEdge, segsPerRadius, i+1)
+            performFEA(i+1)
 
             # Close generated part
             FreeCAD.closeDocument(partName)
@@ -100,17 +93,6 @@ class FEAPanel:
         (self.stats, self.numAnalysed) = Common.writeAnalysisStatusToFile()
 
         self.updateAnalysisTable()
-
-    def finenessChanged(self, value):
-        fineness = self.form.finenessBox.currentText()
-        if fineness == "UserDefined":
-            self.form.growthRateBox.setEnabled(True)
-            self.form.segsPerEdgeBox.setEnabled(True)
-            self.form.segsPerRadiusBox.setEnabled(True)
-        else:
-            self.form.growthRateBox.setEnabled(False)
-            self.form.segsPerEdgeBox.setEnabled(False)
-            self.form.segsPerRadiusBox.setEnabled(False)
 
 
     def updateAnalysisTable(self):
@@ -141,35 +123,10 @@ class FEAPanel:
         self.form.tableView.setModel(tableModel)
 
 
-def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius,GenNumb):
-    # Get document handle to part that was just generated
+def performFEA(GenerationNumber):
     doc = FreeCAD.ActiveDocument
-    
-    meshsizee=FreeCAD.activeDocument().Parameters.get('G2')
-    print(meshsizee)
-    analysis_object = doc.Analysis
-
-    # generate mesh
-    mesh = doc.addObject('Fem::FemMeshShapeNetgenObject', 'FEMMeshNetgen')
-    mesh.Shape = doc.Body
-    mesh.MaxSize = meshsizee
-    mesh.Optimize = True
-    mesh.SecondOrder = True
-    # set meshing parameters from function inputs
-    # print(mesh.Maxsize)
-    if fineness == "UserDefined":
-        mesh.GrowthRate = growthRate
-        mesh.NbSegsPerEdge = segsPerEdge
-        mesh.NbSegsPerRadius = segsPerRadius
-
-    mesh.Fineness = fineness
     doc.recompute()
-
-    analysis_object.addObject(mesh)
-
-    # recompute
-    doc.recompute()
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+    workingDir = '/'.join(doc.FileName.split('/')[0:-1])
     # run the analysis step by step
     from femtools import ccxtools
     fea = ccxtools.FemToolsCcx()
@@ -180,9 +137,6 @@ def performFEA(fineness, growthRate, segsPerEdge, segsPerRadius,GenNumb):
     if not message:
         fea.purge_results()
         fea.write_inp_file()
-        # on error at inp file writing, the inp file path "" was returned (even if the file was written)
-        # if we would write the inp file anyway, we need to again set it manually
-        # fea.inp_file_name = '/tmp/FEMWB/FEMMeshGmsh.inp'
         fea.ccx_run()
         fea.load_results()
     else:

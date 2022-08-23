@@ -8,9 +8,9 @@ class FGWorkbench(Workbench):
     def Initialize(self):
         """This function is executed when FreeCAD starts"""
         #import MyModuleA, MyModuleB  # import here all the needed files that create your FreeCAD commands
-        from fembygen import Initiate, Alias, Generate, FEA, Results, Refine
+        from fembygen import Initiate, Alias, Generate, FEA, Results
         FreeCADGui.addIconPath(FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/")
-        self.list = ["Initiate", "Alias","Generate", "FEA", "Refine", "Results"]  # A list of command names created in the line above
+        self.list = ["Initiate", "Alias","Generate", "FEA", "Results"]  # A list of command names created in the line above
         self.appendToolbar("Commands", self.list)  # creates a new toolbar with your commands
         self.appendMenu("FEMbyGEN", self.list)  # creates a new menu
 

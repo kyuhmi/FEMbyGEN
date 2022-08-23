@@ -22,22 +22,21 @@ class InitiateCommand():
 class InitiatePanel:
     def __init__(self):   
         # Add spreatsheet
-        self.paramsheet=FreeCAD.activeDocument().addObject('Spreadsheet::Sheet','Parameters')
+        doc=FreeCAD.ActiveDocument
+        self.paramsheet=doc.addObject('Spreadsheet::Sheet','Parameters')
         # Spreadsheet editing
         for i in range(10):
             self.paramsheet.set(f'A{i+2}',f'{i+1}.Parameter')
-            FreeCAD.ActiveDocument.Parameters.setStyle(f'A{i+2}:A{i+2}', 'bold', 'add')
+            doc.Parameters.setStyle(f'A{i+2}:A{i+2}', 'bold', 'add')
 
         self.paramsheet.set('B1','Parameter Name')
-        FreeCAD.ActiveDocument.Parameters.setStyle('B1:B1', 'bold', 'add')
         self.paramsheet.set('C1','Min Value')
-        FreeCAD.ActiveDocument.Parameters.setStyle('C1:C1', 'bold', 'add')
         self.paramsheet.set('D1','Max Value')
-        FreeCAD.ActiveDocument.Parameters.setStyle('D1:D1', 'bold', 'add')
         self.paramsheet.set('E1','Number of Generations')
-        FreeCAD.ActiveDocument.Parameters.setStyle('E1:E1', 'bold', 'add')
-        self.paramsheet.set('G1','Mesh Size')
-        FreeCAD.ActiveDocument.Parameters.setStyle('G1:G1', 'bold', 'add')
-        FreeCAD.ActiveDocument.recompute() 
+        doc.Parameters.setStyle('B1:E1', 'bold', 'add')
+        doc.Parameters.setForeground('A2:A100', (1.000000,0.000000,0.000000,1.000000))
+        doc.Parameters.setForeground('B1:E1', (0.000000,0.501961,0.000000,1.000000))
+        doc.Parameters.setAlignment('C2:E100', 'left|vcenter|vimplied')
+        doc.recompute() 
 
 FreeCADGui.addCommand('Initiate', InitiateCommand())

@@ -193,64 +193,6 @@ class ResultsPanel:
         return colours
 
 
-def readFRD(filepath):
-    result = None
-    try:
-        parser = FRDParser.FRDParser(filepath)
-
-        nodeCount = parser.frd.node_block.numnod
-        elemCount = parser.frd.elem_block.numelem
-
-        stresses = np.zeros((nodeCount, 4), dtype=np.float32)
-        disp = np.zeros((nodeCount, 4), dtype=np.float32)
-        error = np.zeros((nodeCount, 1), dtype=np.float32)
-        for i in range(nodeCount):
-            stresses[i, 0:3] = parser.get_results_node(i + 1, names="STRESS")[0][0:3]
-            disp[i, 0:3] = parser.get_results_node(i + 1, names="DISP")[0][0:3]
-            error[i] = parser.get_results_node(i + 1, names="ERROR")[0]
-
-        # Calculate resultant stresses and displacements
-        stresses[:, 3] = np.sqrt(np.square(stresses[:, 0]) + np.square(stresses[:, 1]) + np.square(stresses[:, 2]))
-        disp[:, 3] = np.sqrt(np.square(disp[:, 0]) + np.square(disp[:, 1]) + np.square(disp[:, 2]))
-
-        # Find max and mean for stress, displacement, and error
-        resultantStress = stresses[:, 3]
-        maxStress = round(max(resultantStress), 3)
-        meanStress = round(np.mean(resultantStress), 3)
-
-        resultantDisp = disp[:, 3]
-        maxDisp = round(max(resultantDisp), 3)
-        meanDisp = round(np.mean(resultantDisp), 3)
-
-        maxError = round(max(error)[0], 1)
-        meanError = round((np.mean(error)), 1)
-
-        # Store results in dictionary to be returned by function
-        result = {
-            "NodeCount": nodeCount,
-            "ElemCount": elemCount,
-            "MaxStress": maxStress,
-            "MeanStress": meanStress,
-            "MaxDisp": maxDisp,
-            "MeanDisp": meanDisp,
-            "MaxError": maxError,
-            "MeanError": meanError
-        }
-    except:
-        print("Analysis failed on generation")
-        result = {
-            "NodeCount": None,
-            "ElemCount": None,
-            "MaxStress": None,
-            "MeanStress": None,
-            "MaxDisp":    None,
-            "MeanDisp":   None,
-            "MaxError":   None,
-            "MeanError":  None
-        }
-    finally:
-        return(result)
-
 def hsvToRgb(h, s, v):
     if s == 0.0:
         return v, v, v
