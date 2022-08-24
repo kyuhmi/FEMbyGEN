@@ -1,19 +1,19 @@
-import FreeCAD, FreeCADGui, Part, PySide
+import FreeCAD
+import FreeCADGui
+import PySide
 import os.path
-from fembygen import FRDParser
-import operator
 import numpy as np
-import random
 from fembygen import Common
+
 
 class ResultsCommand():
     """Show results of analysed generations"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'fembygen/Results.svg',  # the name of a svg file available in the resources
-                'Accel' : "Shift+R",  # a default shortcut (optional)
+        return {'Pixmap': 'fembygen/Results.svg',  # the name of a svg file available in the resources
+                'Accel': "Shift+R",  # a default shortcut (optional)
                 'MenuText': "Show Results",
-                'ToolTip' : "Show results of analysed generations"}
+                'ToolTip': "Show results of analysed generations"}
 
     def Activated(self):
         panel = ResultsPanel()
@@ -26,52 +26,51 @@ class ResultsCommand():
         are met or not. This function is optional."""
         return True
 
+
 class ResultsPanel:
     def __init__(self):
         # this will create a Qt widget from our ui file
-        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Results.ui"
-        self.form = FreeCADGui.PySideUic.loadUi(guiPath)
-        self.workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        self.numGenerations = self.checkGenerations()
-
-        # If FEAMetrics.npy doesn't exist, try to generate it from scratch
-        filePath = self.workingDir + "/FEAMetrics.npy"
-        if not os.path.isfile(filePath):
-            print("Calculating metrics...")
-            Common.calcAndSaveFEAMetrics()
-
-        # Load metrics from file
-        metrics = np.load(filePath)
-        table = metrics.tolist()
-
-        # Split into header and table data, then update table
-        self.metricNames = table[0]
-        self.metrics = table[1:]
-
-        # Add configuration controls
-        self.addConfigControls()
-
-        self.updateResultsTable()
-
-
+        try:
+            guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Results.ui"
+            self.form = FreeCADGui.PySideUic.loadUi(guiPath)
+            self.workingDir = '/'.join(
+                FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+            self.numGenerations = Common.checkGenerations()
+    
+            # If FEAMetrics.npy doesn't exist, try to generate it from scratch
+            filePath = self.workingDir + "/FEAMetrics.npy"
+            if not os.path.isfile(filePath):
+                print("Calculating metrics...")
+                Common.calcAndSaveFEAMetrics()
+    
+            # Load metrics from file
+            metrics = np.load(filePath)
+            table = metrics.tolist()
+    
+            # Split into header and table data, then update table
+            self.metricNames = table[0]
+            self.metrics = table[1:]
+    
+            # Add configuration controls
+            self.addConfigControls()
+    
+            self.updateResultsTable()
+        except:
+            print("Please open a master file before open results")
     def accept(self):
         FreeCADGui.Control.closeDialog()
 
-    def checkGenerations(self):
-        numGens = 0
-        while os.path.isfile(self.workingDir + "/Gen" + str(numGens) + ".FCStd"):
-            numGens += 1
-
-        return numGens
 
     def updateResultsTable(self):
         header = self.metricNames
         items = self.metrics
 
         colours = self.generateColourScalesFromMetrics()
-        self.tableModel = Common.GenTableModel(self.form, items, header, colours)
+        self.tableModel = Common.GenTableModel(
+            self.form, items, header, colours)
         self.form.resultsTable.setModel(self.tableModel)
         self.form.resultsTable.resizeColumnsToContents()
+        self.form.resultsTable.clicked.connect(Common.showGen)
 
     def addConfigControls(self):
         self.configControls = []
@@ -106,7 +105,8 @@ class ResultsPanel:
             minBox.valueChanged.connect(valueChanged)
             maxBox.valueChanged.connect(valueChanged)
 
-            controls = [paramCheck, redGreenRadio, gradientRadio, radioGroup, minBox, maxBox]
+            controls = [paramCheck, redGreenRadio,
+                        gradientRadio, radioGroup, minBox, maxBox]
             self.configControls.append(controls)
 
             # Add widgets to form
@@ -120,7 +120,7 @@ class ResultsPanel:
 
     def updateResultsTableColours(self, colours):
         self.tableModel.updateColours(colours)
-        #self.form.resultsTable.update()
+        # self.form.resultsTable.update()
         self.form.resultsTable.activated.emit(1)
 
     def getMetricValueRange(self, metricName):
@@ -145,7 +145,8 @@ class ResultsPanel:
     def generateColourScalesFromMetrics(self):
         width = len(self.metricNames)
         height = len(self.metrics)
-        colours = [[PySide.QtGui.QColor("white") for x in range(width)] for y in range(height)]
+        colours = [[PySide.QtGui.QColor("white")
+                    for x in range(width)] for y in range(height)]
 
         items = self.metrics
 
@@ -175,15 +176,16 @@ class ResultsPanel:
                         # If value is greater than maximum, set it to full intensity
                         normVal = 1.0
                     else:
-                        if valRange!=0:
+                        if valRange != 0:
                             normVal = (value - minVal) / valRange
                         else:
-                            normVal=0
+                            normVal = 0
 
                     hue = 0.4
-                    col = hsvToRgb(hue, normVal, 1.0)
+                    col = Common.hsvToRgb(hue, normVal, 1.0)
                     col = [int(col[0]*255), int(col[1]*255), int(col[2]*255)]
-                    colours[j][i] = PySide.QtGui.QColor(col[0], col[1], col[2], 255)
+                    colours[j][i] = PySide.QtGui.QColor(
+                        col[0], col[1], col[2], 255)
                 except ValueError:
                     # Item was not a number. Likely a string because an error occured for analysis in this row
                     # so colour it pink
@@ -191,29 +193,6 @@ class ResultsPanel:
                     pass
 
         return colours
-
-
-def hsvToRgb(h, s, v):
-    if s == 0.0:
-        return v, v, v
-    i =int(h * 6.0)  # XXX assume int() truncates!
-    f = (h * 6.0) - i
-    p = v * (1.0 - s)
-    q = v * (1.0 - s * f)
-    t = v * (1.0 - s * (1.0 - f))
-    i = i % 6
-    if i == 0:
-        return v, t, p
-    if i == 1:
-        return q, v, p
-    if i == 2:
-        return p, v, t
-    if i == 3:
-        return p, q, v
-    if i == 4:
-        return t, p, v
-    if i == 5:
-        return v, p, q
 
 
 FreeCADGui.addCommand('Results', ResultsCommand())

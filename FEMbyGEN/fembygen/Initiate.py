@@ -1,6 +1,4 @@
-import FreeCAD, FreeCADGui, Part, Mesh
-import PySide
-
+import FreeCAD, FreeCADGui
 
 class InitiateCommand():
     """Analyse the generated parts"""
