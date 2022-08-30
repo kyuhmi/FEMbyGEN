@@ -1,7 +1,7 @@
 # FEMbyGEN
 A FreeCAD module that uses Generative Design to calculate and show structural analysis results
 
-This project was devoloped based on [Rahul] (https://github.com/MightyBucket) Master's thesis. For more information, click [here](https://mightybucket.github.io/projects/2021/05/31/masters-dissertation.html) and [Ogeday Yavuz](https://github.com/OgedaYY/) Graduation Thesis.
+This project was devoloped based on [Rahul](https://github.com/MightyBucket/) Master's thesis. For more information, click [here](https://mightybucket.github.io/projects/2021/05/31/masters-dissertation.html) and [Ogeday Yavuz](https://github.com/OgedaYY/) Graduation Thesis.
 
 ## Installation instructions
 This folder contains the code for a workbench plug-in for FreeCAD. Therefore you must have FreeCAD installed to use it.
