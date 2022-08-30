@@ -1,4 +1,4 @@
-import FreeCADGui
+import FreeCAD, FreeCADGui
 
 class FGWorkbench(Workbench):
     MenuText = "FEMbyGEN"
@@ -34,4 +34,4 @@ class FGWorkbench(Workbench):
         return "Gui::PythonWorkbench"
 
 
-Gui.addWorkbench(FGWorkbench())
+FreeCADGui.addWorkbench(FGWorkbench())

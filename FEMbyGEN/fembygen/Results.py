@@ -6,6 +6,51 @@ import numpy as np
 from fembygen import Common
 
 
+def makeResult():
+    try:
+        obj=FreeCAD.ActiveDocument.Results
+        obj.isValid()
+    except:
+        obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "Results")
+        FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
+    Result(obj)
+    if FreeCAD.GuiUp:
+        ViewProviderResult(obj.ViewObject)
+    return obj
+
+
+class Result:
+    """ The CFD Physics Model """
+    def __init__(self, obj):
+        obj.Proxy = self
+        self.Type = "Result"
+        self.initProperties(obj)
+
+    def initProperties(self, obj):
+        # obj.supportedProperties()
+        # ['App::PropertyBool', 'App::PropertyBoolList', 'App::PropertyFloat', 'App::PropertyFloatList',
+        #  'App::PropertyFloatConstraint', 'App::PropertyPrecision', 'App::PropertyQuantity',
+        #  'App::PropertyQuantityConstraint', 'App::PropertyAngle', 'App::PropertyDistance', 'App::PropertyLength',
+        #  'App::PropertyArea', 'App::PropertyVolume', 'App::PropertySpeed', 'App::PropertyAcceleration',
+        #  'App::PropertyForce', 'App::PropertyPressure', 'App::PropertyInteger', 'App::PropertyIntegerConstraint',
+        #  'App::PropertyPercent', 'App::PropertyEnumeration', 'App::PropertyIntegerList', 'App::PropertyIntegerSet',
+        #  'App::PropertyMap', 'App::PropertyString', 'App::PropertyUUID', 'App::PropertyFont',
+        #  'App::PropertyStringList', 'App::PropertyLink', 'App::PropertyLinkChild', 'App::PropertyLinkGlobal',
+        #  'App::PropertyLinkSub', 'App::PropertyLinkSubChild', 'App::PropertyLinkSubGlobal', 'App::PropertyLinkList',
+        #  'App::PropertyLinkListChild', 'App::PropertyLinkListGlobal', 'App::PropertyLinkSubList',
+        #  'App::PropertyLinkSubListChild', 'App::PropertyLinkSubListGlobal', 'App::PropertyMatrix',
+        #  'App::PropertyVector', 'App::PropertyVectorDistance', 'App::PropertyPosition', 'App::PropertyDirection',
+        #  'App::PropertyVectorList', 'App::PropertyPlacement', 'App::PropertyPlacementList',
+        #  'App::PropertyPlacementLink', 'App::PropertyColor', 'App::PropertyColorList', 'App::PropertyMaterial',
+        #  'App::PropertyMaterialList', 'App::PropertyPath', 'App::PropertyFile', 'App::PropertyFileIncluded',
+        #  'App::PropertyPythonObject', 'App::PropertyExpressionEngine', 'Part::PropertyPartShape',
+        #  'Part::PropertyGeometryList', 'Part::PropertyShapeHistory', 'Part::PropertyFilletEdges',
+        #  'Fem::PropertyFemMesh', 'Fem::PropertyPostDataObject']
+        pass
+
+
+
+
 class ResultsCommand():
     """Show results of analysed generations"""
 
@@ -16,50 +61,50 @@ class ResultsCommand():
                 'ToolTip': "Show results of analysed generations"}
 
     def Activated(self):
-        panel = ResultsPanel()
-        FreeCADGui.Control.showDialog(panel)
-        """Do something here"""
+        obj=makeResult()
+        panel = ResultsPanel(obj)
+        # FreeCADGui.Control.showDialog(panel)
+        doc = FreeCADGui.getDocument(obj.ViewObject.Object.Document)
+        if not doc.getInEdit():
+            doc.setEdit(obj.ViewObject.Object.Name)
+        else:
+            FreeCAD.Console.PrintError('Existing task dialog already open\n')
         return
 
     def IsActive(self):
         """Here you can define if the command must be active or not (greyed) if certain conditions
         are met or not. This function is optional."""
-        return True
+        return FreeCAD.ActiveDocument is not None
 
 
 class ResultsPanel:
-    def __init__(self):
+    def __init__(self, object):
         # this will create a Qt widget from our ui file
-        try:
-            guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Results.ui"
-            self.form = FreeCADGui.PySideUic.loadUi(guiPath)
-            self.workingDir = '/'.join(
-                FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-            self.numGenerations = Common.checkGenerations()
-    
-            # If FEAMetrics.npy doesn't exist, try to generate it from scratch
-            filePath = self.workingDir + "/FEAMetrics.npy"
-            if not os.path.isfile(filePath):
-                print("Calculating metrics...")
-                Common.calcAndSaveFEAMetrics()
-    
-            # Load metrics from file
-            metrics = np.load(filePath)
-            table = metrics.tolist()
-    
-            # Split into header and table data, then update table
-            self.metricNames = table[0]
-            self.metrics = table[1:]
-    
-            # Add configuration controls
-            self.addConfigControls()
-    
-            self.updateResultsTable()
-        except:
-            print("Please open a master file before open results")
-    def accept(self):
-        FreeCADGui.Control.closeDialog()
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Results.ui"
+        self.form = FreeCADGui.PySideUic.loadUi(guiPath)
+        self.workingDir = '/'.join(
+            FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        self.numGenerations = Common.checkGenerations()
+        self.obj=object
 
+        # If FEAMetrics.npy doesn't exist, try to generate it from scratch
+        filePath = self.workingDir + "/FEAMetrics.npy"
+        if not os.path.isfile(filePath):
+            print("Calculating metrics...")
+            Common.calcAndSaveFEAMetrics()
+
+        # Load metrics from file
+        metrics = np.load(filePath)
+        table = metrics.tolist()
+
+        # Split into header and table data, then update table
+        self.metricNames = table[0]
+        self.metrics = table[1:]
+
+        # Add configuration controls
+        self.addConfigControls()
+
+        self.updateResultsTable()
 
     def updateResultsTable(self):
         header = self.metricNames
@@ -194,5 +239,57 @@ class ResultsPanel:
 
         return colours
 
+    def accept(self):
+        doc = FreeCADGui.getDocument(self.obj.Document)
+        doc.resetEdit()
+        doc.Document.recompute()
+
+
+    def reject(self):
+        doc = FreeCADGui.getDocument(self.obj.Document)
+        doc.resetEdit()
+
+
+class ViewProviderResult:
+    def __init__(self, vobj):
+        vobj.Proxy = self
+
+    def getIcon(self):
+        icon_path = 'fembygen/Results.svg'
+        return icon_path
+
+    def attach(self, vobj):
+        self.ViewObject = vobj
+        self.Object = vobj.Object
+
+    def updateData(self, obj, prop):
+        return
+
+    def onChanged(self, vobj, prop):
+        return
+
+    def doubleClicked(self, vobj):
+        doc = FreeCADGui.getDocument(vobj.Object.Document)
+        if not doc.getInEdit():
+            doc.setEdit(vobj.Object.Name)
+        else:
+            FreeCAD.Console.PrintError('Existing task dialog already open\n')
+        return True
+
+    def setEdit(self, vobj, mode):
+        taskd =  ResultsPanel(vobj)
+        taskd.obj = vobj.Object
+        FreeCADGui.Control.showDialog(taskd)
+        return True
+
+    def unsetEdit(self, vobj, mode):
+        FreeCADGui.Control.closeDialog()
+        return
+
+    def __getstate__(self):
+        return None
+
+    def __setstate__(self, state):
+        return None
 
 FreeCADGui.addCommand('Results', ResultsCommand())

@@ -7,6 +7,48 @@ import os
 import PySide
 
 
+def makeFEA():
+    try:
+        obj=FreeCAD.ActiveDocument.FEA
+        obj.isValid()
+    except:
+        obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "FEA")
+        FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
+    FEA(obj)
+    if FreeCAD.GuiUp:
+        ViewProviderFEA(obj.ViewObject)
+    return obj
+
+
+class FEA:
+    """ Finite Element Analysis """
+    def __init__(self, obj):
+        obj.Proxy = self
+        self.Type = "FEA"
+        self.initProperties(obj)
+
+    def initProperties(self, obj):
+        # obj.supportedProperties()
+        # ['App::PropertyBool', 'App::PropertyBoolList', 'App::PropertyFloat', 'App::PropertyFloatList',
+        #  'App::PropertyFloatConstraint', 'App::PropertyPrecision', 'App::PropertyQuantity',
+        #  'App::PropertyQuantityConstraint', 'App::PropertyAngle', 'App::PropertyDistance', 'App::PropertyLength',
+        #  'App::PropertyArea', 'App::PropertyVolume', 'App::PropertySpeed', 'App::PropertyAcceleration',
+        #  'App::PropertyForce', 'App::PropertyPressure', 'App::PropertyInteger', 'App::PropertyIntegerConstraint',
+        #  'App::PropertyPercent', 'App::PropertyEnumeration', 'App::PropertyIntegerList', 'App::PropertyIntegerSet',
+        #  'App::PropertyMap', 'App::PropertyString', 'App::PropertyUUID', 'App::PropertyFont',
+        #  'App::PropertyStringList', 'App::PropertyLink', 'App::PropertyLinkChild', 'App::PropertyLinkGlobal',
+        #  'App::PropertyLinkSub', 'App::PropertyLinkSubChild', 'App::PropertyLinkSubGlobal', 'App::PropertyLinkList',
+        #  'App::PropertyLinkListChild', 'App::PropertyLinkListGlobal', 'App::PropertyLinkSubList',
+        #  'App::PropertyLinkSubListChild', 'App::PropertyLinkSubListGlobal', 'App::PropertyMatrix',
+        #  'App::PropertyVector', 'App::PropertyVectorDistance', 'App::PropertyPosition', 'App::PropertyDirection',
+        #  'App::PropertyVectorList', 'App::PropertyPlacement', 'App::PropertyPlacementList',
+        #  'App::PropertyPlacementLink', 'App::PropertyColor', 'App::PropertyColorList', 'App::PropertyMaterial',
+        #  'App::PropertyMaterialList', 'App::PropertyPath', 'App::PropertyFile', 'App::PropertyFileIncluded',
+        #  'App::PropertyPythonObject', 'App::PropertyExpressionEngine', 'Part::PropertyPartShape',
+        #  'Part::PropertyGeometryList', 'Part::PropertyShapeHistory', 'Part::PropertyFilletEdges',
+        #  'Fem::PropertyFemMesh', 'Fem::PropertyPostDataObject']
+        pass
+
 class FEACommand():
     """Perform FEA on generated parts"""
 
@@ -17,49 +59,45 @@ class FEACommand():
                 'ToolTip': "Perform FEA on generated parts"}
 
     def Activated(self):
-        panel = FEAPanel()
-        FreeCADGui.Control.showDialog(panel)
+        obj=makeFEA()
+        # panel = ResultsPanel(obj)
+        # FreeCADGui.Control.showDialog(panel)
+        doc = FreeCADGui.getDocument(obj.ViewObject.Object.Document)
+        if not doc.getInEdit():
+            doc.setEdit(obj.ViewObject.Object.Name)
+        else:
+            FreeCAD.Console.PrintError('Existing task dialog already open\n')
         return
 
     def IsActive(self):
         """Here you can define if the command must be active or not (greyed) if certain conditions
         are met or not. This function is optional."""
-        return True
+        return FreeCAD.ActiveDocument is not None
 
 
 class FEAPanel:
-    def __init__(self):
+    def __init__(self, object):
+        # Creating tree view object
+        self.obj=object
         # this will create a Qt widget from our ui file
-        try:
-            guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/PerformFEA.ui"
-            self.form = FreeCADGui.PySideUic.loadUi(guiPath)
-            self.workingDir = '/'.join(
-                FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-            self.numGenerations = Common.checkGenerations()
-            (self.stats, self.numAnalysed) = Common.checkAnalyses()
-    
-            # Update status labels and table
-            self.form.genCountLabel.setText(
-                "There are " + str(self.numGenerations) + " generations")
-            self.form.analysedCountLabel.setText(
-                str(self.numAnalysed) + " successful analyses")
-            self.updateAnalysisTable()
-    
-            # Link callback procedures
-            self.form.startFEAButton.clicked.connect(self.FEAGenerations)
-            self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
-        except:
-            print("Please open a master file before finite element analysis")
-    def accept(self):
-        FreeCADGui.Control.closeDialog()
+        guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/PerformFEA.ui"
+        self.form = FreeCADGui.PySideUic.loadUi(guiPath)
+        self.workingDir = '/'.join(
+            FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        self.numGenerations = Common.checkGenerations()
+        (self.stats, self.numAnalysed) = Common.checkAnalyses()
 
-    # def checkGenerations(self):
-    #     numGens = 1
-    #     print(self.workingDir)
-    #     while os.path.isdir(self.workingDir + "/Gen" + str(numGens)):
-    #         numGens += 1
-    #     return numGens-1
+        # Update status labels and table
+        self.form.genCountLabel.setText(
+            "There are " + str(self.numGenerations) + " generations")
+        self.form.analysedCountLabel.setText(
+            str(self.numAnalysed) + " successful analyses")
+        self.updateAnalysisTable()
 
+        # Link callback procedures
+        self.form.startFEAButton.clicked.connect(self.FEAGenerations)
+        self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
+    
     def deleteGenerations(self):
         print("Deleting...")
         numGens = Common.checkGenerations()
@@ -153,6 +191,57 @@ class FEAPanel:
     
         # save FEA results
         doc.save()
+    def accept(self):
+        doc = FreeCADGui.getDocument(self.obj.Document)
+        doc.resetEdit()
+        doc.Document.recompute()
 
+
+    def reject(self):
+        doc = FreeCADGui.getDocument(self.obj.Document)
+        doc.resetEdit()
+
+
+class ViewProviderFEA:
+    def __init__(self, vobj):
+        vobj.Proxy = self
+
+    def getIcon(self):
+        icon_path = 'fembygen/FEA.svg'
+        return icon_path
+
+    def attach(self, vobj):
+        self.ViewObject = vobj
+        self.Object = vobj.Object
+
+    def updateData(self, obj, prop):
+        return
+
+    def onChanged(self, vobj, prop):
+        return
+
+    def doubleClicked(self, vobj):
+        doc = FreeCADGui.getDocument(vobj.Object.Document)
+        if not doc.getInEdit():
+            doc.setEdit(vobj.Object.Name)
+        else:
+            FreeCAD.Console.PrintError('Existing task dialog already open\n')
+        return True
+
+    def setEdit(self, vobj, mode):
+        taskd =  FEAPanel(vobj)
+        taskd.obj = vobj.Object
+        FreeCADGui.Control.showDialog(taskd)
+        return True
+
+    def unsetEdit(self, vobj, mode):
+        FreeCADGui.Control.closeDialog()
+        return
+
+    def __getstate__(self):
+        return None
+
+    def __setstate__(self, state):
+        return None
 
 FreeCADGui.addCommand('FEA', FEACommand())

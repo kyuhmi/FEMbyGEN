@@ -7,6 +7,50 @@ from fembygen import Common
 import csv
 import numpy as np
 import itertools
+import PySide
+
+def makeGenerate():
+    try:
+        obj=FreeCAD.ActiveDocument.Generate
+        obj.isValid()
+    except:
+        obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "Generate")
+        FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
+    Generate(obj)
+    if FreeCAD.GuiUp:
+        ViewProviderGen(obj.ViewObject)
+    return obj
+
+
+class Generate:
+    """ Finite Element Analysis """
+    def __init__(self, obj):
+        obj.Proxy = self
+        self.Type = "Generate"
+        self.initProperties(obj)
+
+    def initProperties(self, obj):
+        # obj.supportedProperties()
+        # ['App::PropertyBool', 'App::PropertyBoolList', 'App::PropertyFloat', 'App::PropertyFloatList',
+        #  'App::PropertyFloatConstraint', 'App::PropertyPrecision', 'App::PropertyQuantity',
+        #  'App::PropertyQuantityConstraint', 'App::PropertyAngle', 'App::PropertyDistance', 'App::PropertyLength',
+        #  'App::PropertyArea', 'App::PropertyVolume', 'App::PropertySpeed', 'App::PropertyAcceleration',
+        #  'App::PropertyForce', 'App::PropertyPressure', 'App::PropertyInteger', 'App::PropertyIntegerConstraint',
+        #  'App::PropertyPercent', 'App::PropertyEnumeration', 'App::PropertyIntegerList', 'App::PropertyIntegerSet',
+        #  'App::PropertyMap', 'App::PropertyString', 'App::PropertyUUID', 'App::PropertyFont',
+        #  'App::PropertyStringList', 'App::PropertyLink', 'App::PropertyLinkChild', 'App::PropertyLinkGlobal',
+        #  'App::PropertyLinkSub', 'App::PropertyLinkSubChild', 'App::PropertyLinkSubGlobal', 'App::PropertyLinkList',
+        #  'App::PropertyLinkListChild', 'App::PropertyLinkListGlobal', 'App::PropertyLinkSubList',
+        #  'App::PropertyLinkSubListChild', 'App::PropertyLinkSubListGlobal', 'App::PropertyMatrix',
+        #  'App::PropertyVector', 'App::PropertyVectorDistance', 'App::PropertyPosition', 'App::PropertyDirection',
+        #  'App::PropertyVectorList', 'App::PropertyPlacement', 'App::PropertyPlacementList',
+        #  'App::PropertyPlacementLink', 'App::PropertyColor', 'App::PropertyColorList', 'App::PropertyMaterial',
+        #  'App::PropertyMaterialList', 'App::PropertyPath', 'App::PropertyFile', 'App::PropertyFileIncluded',
+        #  'App::PropertyPythonObject', 'App::PropertyExpressionEngine', 'Part::PropertyPartShape',
+        #  'Part::PropertyGeometryList', 'Part::PropertyShapeHistory', 'Part::PropertyFilletEdges',
+        #  'Fem::PropertyFemMesh', 'Fem::PropertyPostDataObject']
+        pass
+
 
 
 class GenerateCommand():
@@ -19,52 +63,69 @@ class GenerateCommand():
                 'ToolTip': "Produce part generations"}
 
     def Activated(self):
-        panel = GeneratePanel()
-        FreeCADGui.Control.showDialog(panel)
+        obj=makeGenerate()
+        # panel = GeneratePanel(obj)
+        # FreeCADGui.Control.showDialog(panel)
+        doc = FreeCADGui.ActiveDocument
+        if not doc.getInEdit():
+            doc.setEdit(obj.ViewObject.Object.Name)
+        else:
+            FreeCAD.Console.PrintError('Existing task dialog already open\n')
         return
 
     def IsActive(self):
         """Here you can define if the command must be active or not (greyed) if certain conditions
         are met or not. This function is optional."""
-        return True
+        return FreeCAD.ActiveDocument is not None
 
 
 class GeneratePanel():
-    def __init__(self):
+    def __init__(self, object):
+
+        self.obj=object
         # this will create a Qt widget from our ui file
         guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Generate.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
-        try:
-            self.workingDir = '/'.join(
-                FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-            readyText = "Ready"
-            # Data variables for parameter table
-            self.parameterNames = []
-            self.parameterValues = []
+        self.workingDir = '/'.join(
+            FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        readyText = "Ready"
+        # Data variables for parameter table
+        self.parameterNames = []
+        self.parameterValues = []
 
-            # First check if generations have already been made from GeneratedParameters.txt
-            (self.parameterNames, self.parameterValues) = Common.checkGenParameters()
+        # First check if generations have already been made from GeneratedParameters.txt
+        (self.parameterNames, self.parameterValues) = Common.checkGenParameters()
 
-            # Check if any generations have been made already, and up to what number
+        # Check if any generations have been made already, and up to what number
 
-            numGens = self.checkGenerations()
+        numGens = self.checkGenerations()
 
-            self.form.numGensLabel.setText(f"{numGens} generations produced")
-            self.form.readyLabel.setText(readyText)
+        self.form.numGensLabel.setText(f"{numGens} generations produced")
+        self.form.readyLabel.setText(readyText)
 
-            self.selectedGen = -1
+        self.selectedGen = -1
 
-            # Connect the button procedures
-            self.form.generateButton.clicked.connect(self.generateParts)
-            self.form.viewGenButton.clicked.connect(self.viewGeneration)
-            self.form.deleteGensButton.clicked.connect(self.deleteGenerations)
-            self.form.nextGen.clicked.connect(lambda: self.nextG(numGens))
-            self.form.previousGen.clicked.connect(
-                lambda: self.previousG(numGens))
-            self.updateParametersTable()
-        except:
-            print(
-                "Please open a file and create parameters spreadsheet by initialize button")
+        # Connect the button procedures
+        self.form.generateButton.clicked.connect(self.generateParts)
+        self.form.viewGenButton.clicked.connect(self.viewGeneration)
+        self.form.deleteGensButton.clicked.connect(self.deleteGenerations)
+        self.form.nextGen.clicked.connect(lambda: self.nextG(numGens))
+        self.form.previousGen.clicked.connect(
+            lambda: self.previousG(numGens))
+        self.updateParametersTable()
+        
+    def meshing(self, doc):
+            # Remeshing new generation
+            if doc.Analysis.Content.find("Netgen") > 0:
+                mesh = doc.FEMMeshNetgen
+                mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
+                mesh.recompute()
+            elif doc.Analysis.Content.find("Gmsh") > 0:
+                from femmesh.gmshtools import GmshTools as gt
+                mesh = doc.FEMMeshGmsh
+                mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
+                gmsh_mesh = gt(mesh)
+                gmsh_mesh.create_mesh()
 
     def generateParts(self):
         doc = FreeCAD.ActiveDocument
@@ -97,52 +158,49 @@ class GeneratePanel():
             numberofgen = int(doc.Parameters.get(f'E{i+2}'))
             self.param.append(np.linspace(mins, maxs, numberofgen))
 
+        self.form.progressBar.setStyleSheet("QProgressBar::chunk "
+                    "{"
+                    "background-color: green;"
+                  "}")
         # Combination of all parameters
         self.numgenerations = list(itertools.product(*self.param))
-
+        print(self.form)
         for i in range(len(self.numgenerations)):
-            FreeCAD.open(docPath, hidden=True)
-            FreeCAD.setActiveDocument(docName)
-            doc = FreeCAD.ActiveDocument
-            # Produce part generation
-            for k in range(self.inumber[0]):
-
-                FreeCAD.activeDocument().Parameters.set(
-                    f'C{k+2}', f'{self.numgenerations[i][k]}')
-                FreeCAD.activeDocument().Parameters.clear(f'D1:D{k+2}')
-                FreeCAD.activeDocument().Parameters.clear(f'E1:E{k+2}')
-            doc.recompute()
-
-            # Remeshing new generation
-            if doc.Analysis.Content.find("Netgen") > 0:
-                mesh = FreeCAD.ActiveDocument.FEMMeshNetgen
-                mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
-                mesh.recompute()
-            elif doc.Analysis.Content.find("Gmsh") > 0:
-                from femmesh.gmshtools import GmshTools as gt
-                mesh = FreeCAD.ActiveDocument.FEMMeshGmsh
-                mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
-                gmsh_mesh = gt(mesh)
-                gmsh_mesh.create_mesh()
-
             # Regenerate the part and save generation as FreeCAD doc
             try:
                 os.mkdir(self.workingDir + f"/Gen{i+1}")
             except:
                 print(
                     f"Please delete earlier generations: Gen{i+1} already exist in the folder")
+                self.form.progressBar.setValue(100)
+                self.form.progressBar.setStyleSheet("QProgressBar::chunk "
+                    "{"
+                    "background-color: red;"
+                  "}")
+                self.form.readyLabel.setText("Delete earlier generations")
+                return
 
-            filename = f"/Gen{i+1}/" + f"Gen{i+1}.FCStd"
-
-            filePath = self.workingDir + filename
-            FreeCAD.ActiveDocument.saveAs(filePath)
+            filename = f"Gen{i+1}.FCStd"
+            filePath = self.workingDir + f"/Gen{i+1}/" + filename
+            shutil.copy(docPath, filePath)
             shutil.copy(filePath, filePath+".backup")
 
-            FreeCAD.closeDocument(docName)
+            doc=FreeCAD.open(filePath, hidden=True)
 
+            # Produce part generation
+            for k in range(self.inumber[0]):
+                doc.Parameters.set(
+                    f'C{k+2}', f'{self.numgenerations[i][k]}')
+                doc.Parameters.clear(f'D1:D{k+2}')
+                doc.Parameters.clear(f'E1:E{k+2}')
+            doc.recompute()
+
+            self.meshing(doc)
+            FreeCAD.closeDocument(filename[:-6])
             # Update progress bar
             progress = ((i+1)/len(self.numgenerations)) * 100
             self.form.progressBar.setValue(progress)
+            
 
         # Reopen document again once finished
         FreeCAD.open(docPath)
@@ -285,5 +343,57 @@ class GeneratePanel():
         tableModel.layoutChanged.emit()
         self.form.parametersTable.setModel(tableModel)
         self.form.parametersTable.clicked.connect(Common.showGen)
+    
+    def accept(self):
+        doc = FreeCADGui.getDocument(self.obj.Document)
+        doc.resetEdit()
+        doc.Document.recompute()
+
+
+    def reject(self):
+        doc = FreeCADGui.getDocument(self.obj.Document)
+        doc.resetEdit()
+
+class ViewProviderGen:
+    def __init__(self, vobj):
+        vobj.Proxy = self
+
+    def getIcon(self):
+        icon_path = 'fembygen/Generate.svg'
+        return icon_path
+
+    def attach(self, vobj):
+        self.ViewObject = vobj
+        self.Object = vobj.Object
+
+    def updateData(self, obj, prop):
+        return
+
+    def onChanged(self, vobj, prop):
+        return
+
+    def doubleClicked(self, vobj):
+        doc = FreeCADGui.getDocument(vobj.Object.Document)
+        if not doc.getInEdit():
+            doc.setEdit(vobj.Object.Name)
+        else:
+            FreeCAD.Console.PrintError('Existing task dialog already open\n')
+        return True
+
+    def setEdit(self, vobj, mode):
+        taskd =  GeneratePanel(vobj)
+        taskd.obj = vobj.Object
+        FreeCADGui.Control.showDialog(taskd)
+        return True
+
+    def unsetEdit(self, vobj, mode):
+        FreeCADGui.Control.closeDialog()
+        return
+
+    def __getstate__(self):
+        return None
+
+    def __setstate__(self, state):
+        return None
 
 FreeCADGui.addCommand('Generate', GenerateCommand())
