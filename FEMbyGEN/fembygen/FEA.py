@@ -9,7 +9,7 @@ import PySide
 
 def makeFEA():
     try:
-        obj=FreeCAD.ActiveDocument.FEA
+        obj = FreeCAD.ActiveDocument.FEA
         obj.isValid()
     except:
         obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "FEA")
@@ -22,32 +22,21 @@ def makeFEA():
 
 class FEA:
     """ Finite Element Analysis """
+
     def __init__(self, obj):
         obj.Proxy = self
         self.Type = "FEA"
         self.initProperties(obj)
 
     def initProperties(self, obj):
-        # obj.supportedProperties()
-        # ['App::PropertyBool', 'App::PropertyBoolList', 'App::PropertyFloat', 'App::PropertyFloatList',
-        #  'App::PropertyFloatConstraint', 'App::PropertyPrecision', 'App::PropertyQuantity',
-        #  'App::PropertyQuantityConstraint', 'App::PropertyAngle', 'App::PropertyDistance', 'App::PropertyLength',
-        #  'App::PropertyArea', 'App::PropertyVolume', 'App::PropertySpeed', 'App::PropertyAcceleration',
-        #  'App::PropertyForce', 'App::PropertyPressure', 'App::PropertyInteger', 'App::PropertyIntegerConstraint',
-        #  'App::PropertyPercent', 'App::PropertyEnumeration', 'App::PropertyIntegerList', 'App::PropertyIntegerSet',
-        #  'App::PropertyMap', 'App::PropertyString', 'App::PropertyUUID', 'App::PropertyFont',
-        #  'App::PropertyStringList', 'App::PropertyLink', 'App::PropertyLinkChild', 'App::PropertyLinkGlobal',
-        #  'App::PropertyLinkSub', 'App::PropertyLinkSubChild', 'App::PropertyLinkSubGlobal', 'App::PropertyLinkList',
-        #  'App::PropertyLinkListChild', 'App::PropertyLinkListGlobal', 'App::PropertyLinkSubList',
-        #  'App::PropertyLinkSubListChild', 'App::PropertyLinkSubListGlobal', 'App::PropertyMatrix',
-        #  'App::PropertyVector', 'App::PropertyVectorDistance', 'App::PropertyPosition', 'App::PropertyDirection',
-        #  'App::PropertyVectorList', 'App::PropertyPlacement', 'App::PropertyPlacementList',
-        #  'App::PropertyPlacementLink', 'App::PropertyColor', 'App::PropertyColorList', 'App::PropertyMaterial',
-        #  'App::PropertyMaterialList', 'App::PropertyPath', 'App::PropertyFile', 'App::PropertyFileIncluded',
-        #  'App::PropertyPythonObject', 'App::PropertyExpressionEngine', 'Part::PropertyPartShape',
-        #  'Part::PropertyGeometryList', 'Part::PropertyShapeHistory', 'Part::PropertyFilletEdges',
-        #  'Fem::PropertyFemMesh', 'Fem::PropertyPostDataObject']
-        pass
+        try:
+            obj.addProperty("App::PropertyStringList", "Status", "Base",
+                            "Analysis Status")
+            obj.addProperty("App::PropertyInteger", "NumberofAnalysis", "Base",
+                            "Number of Analysis")
+        except:
+            pass
+
 
 class FEACommand():
     """Perform FEA on generated parts"""
@@ -59,7 +48,7 @@ class FEACommand():
                 'ToolTip': "Perform FEA on generated parts"}
 
     def Activated(self):
-        obj=makeFEA()
+        obj = makeFEA()
         # panel = ResultsPanel(obj)
         # FreeCADGui.Control.showDialog(panel)
         doc = FreeCADGui.getDocument(obj.ViewObject.Object.Document)
@@ -78,26 +67,27 @@ class FEACommand():
 class FEAPanel:
     def __init__(self, object):
         # Creating tree view object
-        self.obj=object
+        self.obj = object
+        self.doc = FreeCAD.ActiveDocument
         # this will create a Qt widget from our ui file
         guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/PerformFEA.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
             FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
         self.numGenerations = Common.checkGenerations()
-        (self.stats, self.numAnalysed) = Common.checkAnalyses()
+        stats, numAnalysed = Common.searchAnalysed()
 
         # Update status labels and table
         self.form.genCountLabel.setText(
             "There are " + str(self.numGenerations) + " generations")
         self.form.analysedCountLabel.setText(
-            str(self.numAnalysed) + " successful analyses")
+            str(numAnalysed) + " successful analyses")
         self.updateAnalysisTable()
 
         # Link callback procedures
         self.form.startFEAButton.clicked.connect(self.FEAGenerations)
         self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
-    
+
     def deleteGenerations(self):
         print("Deleting...")
         numGens = Common.checkGenerations()
@@ -110,8 +100,12 @@ class FEAPanel:
                     pass
                 else:
                     os.remove(self.workingDir+f"/Gen{i}/"+j)
+                    print("Gen{i} analysis files deleted")
             shutil.copyfile(
                 self.workingDir+f"/Gen{i}/Gen{i}.FCStd.backup", self.workingDir+f"/Gen{i}/Gen{i}.FCStd")
+        doc = FreeCAD.ActiveDocument
+        doc.FEA.Status = []
+        doc.FEA.NumberofAnalysis = 0
         self.updateAnalysisTable()
 
     def FEAGenerations(self):
@@ -133,21 +127,24 @@ class FEAPanel:
             progress = ((i+1)/self.numGenerations) * 100
             self.form.progressBar.setValue(progress)
 
-        (self.stats, self.numAnalysed) = Common.writeAnalysisStatusToFile()
+        (statuses, numAnalysed) = Common.searchAnalysed()
+        self.doc.FEA.Status = statuses
+        self.doc.FEA.NumberofAnalysis = numAnalysed
 
         self.updateAnalysisTable()
 
     def updateAnalysisTable(self):
         # Make a header and table with one more column, because otherwise the table object will split each character
         # into its own cell
+        stats, numAnalysed = Common.checkAnalyses()
         header = ["Status"]
         table = []
 
-        for i in range(len(self.stats)):
-            table.append([self.stats[i]])
+        for i in range(len(stats)):
+            table.append([stats[i]])
 
         colours = []
-        for status in self.stats:
+        for status in stats:
             white = PySide.QtGui.QColor("white")
             colour = white
             if status == "Analysed":
@@ -166,7 +163,6 @@ class FEAPanel:
         tableModel.layoutChanged.emit()
         self.form.tableView.setModel(tableModel)
         self.form.tableView.clicked.connect(Common.showGen)
-
 
     def performFEA(self, GenerationNumber):
         doc = FreeCAD.ActiveDocument
@@ -188,14 +184,14 @@ class FEAPanel:
                 "Houston, we have a problem! {}\n".format(message))  # in report view
             print("Houston, we have a problem! {}\n".format(
                 message))  # in python console
-    
+
         # save FEA results
         doc.save()
+
     def accept(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
-
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
@@ -229,7 +225,7 @@ class ViewProviderFEA:
         return True
 
     def setEdit(self, vobj, mode):
-        taskd =  FEAPanel(vobj)
+        taskd = FEAPanel(vobj)
         taskd.obj = vobj.Object
         FreeCADGui.Control.showDialog(taskd)
         return True
@@ -243,5 +239,6 @@ class ViewProviderFEA:
 
     def __setstate__(self, state):
         return None
+
 
 FreeCADGui.addCommand('FEA', FEACommand())

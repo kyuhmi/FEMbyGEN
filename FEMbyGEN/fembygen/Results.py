@@ -8,10 +8,11 @@ from fembygen import Common
 
 def makeResult():
     try:
-        obj=FreeCAD.ActiveDocument.Results
+        obj = FreeCAD.ActiveDocument.Results
         obj.isValid()
     except:
-        obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "Results")
+        obj = FreeCAD.ActiveDocument.addObject(
+            "Part::FeaturePython", "Results")
         FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
     Result(obj)
     if FreeCAD.GuiUp:
@@ -21,34 +22,19 @@ def makeResult():
 
 class Result:
     """ The CFD Physics Model """
+
     def __init__(self, obj):
         obj.Proxy = self
         self.Type = "Result"
         self.initProperties(obj)
+        obj.FEAMetrics = []
 
     def initProperties(self, obj):
-        # obj.supportedProperties()
-        # ['App::PropertyBool', 'App::PropertyBoolList', 'App::PropertyFloat', 'App::PropertyFloatList',
-        #  'App::PropertyFloatConstraint', 'App::PropertyPrecision', 'App::PropertyQuantity',
-        #  'App::PropertyQuantityConstraint', 'App::PropertyAngle', 'App::PropertyDistance', 'App::PropertyLength',
-        #  'App::PropertyArea', 'App::PropertyVolume', 'App::PropertySpeed', 'App::PropertyAcceleration',
-        #  'App::PropertyForce', 'App::PropertyPressure', 'App::PropertyInteger', 'App::PropertyIntegerConstraint',
-        #  'App::PropertyPercent', 'App::PropertyEnumeration', 'App::PropertyIntegerList', 'App::PropertyIntegerSet',
-        #  'App::PropertyMap', 'App::PropertyString', 'App::PropertyUUID', 'App::PropertyFont',
-        #  'App::PropertyStringList', 'App::PropertyLink', 'App::PropertyLinkChild', 'App::PropertyLinkGlobal',
-        #  'App::PropertyLinkSub', 'App::PropertyLinkSubChild', 'App::PropertyLinkSubGlobal', 'App::PropertyLinkList',
-        #  'App::PropertyLinkListChild', 'App::PropertyLinkListGlobal', 'App::PropertyLinkSubList',
-        #  'App::PropertyLinkSubListChild', 'App::PropertyLinkSubListGlobal', 'App::PropertyMatrix',
-        #  'App::PropertyVector', 'App::PropertyVectorDistance', 'App::PropertyPosition', 'App::PropertyDirection',
-        #  'App::PropertyVectorList', 'App::PropertyPlacement', 'App::PropertyPlacementList',
-        #  'App::PropertyPlacementLink', 'App::PropertyColor', 'App::PropertyColorList', 'App::PropertyMaterial',
-        #  'App::PropertyMaterialList', 'App::PropertyPath', 'App::PropertyFile', 'App::PropertyFileIncluded',
-        #  'App::PropertyPythonObject', 'App::PropertyExpressionEngine', 'Part::PropertyPartShape',
-        #  'Part::PropertyGeometryList', 'Part::PropertyShapeHistory', 'Part::PropertyFilletEdges',
-        #  'Fem::PropertyFemMesh', 'Fem::PropertyPostDataObject']
-        pass
-
-
+        try:
+            obj.addProperty("App::PropertyPythonObject", "FEAMetrics", "Base",
+                            "Result lists")
+        except:
+            pass
 
 
 class ResultsCommand():
@@ -61,9 +47,7 @@ class ResultsCommand():
                 'ToolTip': "Show results of analysed generations"}
 
     def Activated(self):
-        obj=makeResult()
-        panel = ResultsPanel(obj)
-        # FreeCADGui.Control.showDialog(panel)
+        obj = makeResult()
         doc = FreeCADGui.getDocument(obj.ViewObject.Object.Document)
         if not doc.getInEdit():
             doc.setEdit(obj.ViewObject.Object.Name)
@@ -85,17 +69,15 @@ class ResultsPanel:
         self.workingDir = '/'.join(
             FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
         self.numGenerations = Common.checkGenerations()
-        self.obj=object
+        self.obj = object
 
-        # If FEAMetrics.npy doesn't exist, try to generate it from scratch
-        filePath = self.workingDir + "/FEAMetrics.npy"
-        if not os.path.isfile(filePath):
+        doc = FreeCAD.ActiveDocument
+        if doc.Results.FEAMetrics == []:
             print("Calculating metrics...")
             Common.calcAndSaveFEAMetrics()
 
         # Load metrics from file
-        metrics = np.load(filePath)
-        table = metrics.tolist()
+        table = doc.Results.FEAMetrics
 
         # Split into header and table data, then update table
         self.metricNames = table[0]
@@ -244,7 +226,6 @@ class ResultsPanel:
         doc.resetEdit()
         doc.Document.recompute()
 
-
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
@@ -277,7 +258,7 @@ class ViewProviderResult:
         return True
 
     def setEdit(self, vobj, mode):
-        taskd =  ResultsPanel(vobj)
+        taskd = ResultsPanel(vobj)
         taskd.obj = vobj.Object
         FreeCADGui.Control.showDialog(taskd)
         return True
@@ -291,5 +272,6 @@ class ViewProviderResult:
 
     def __setstate__(self, state):
         return None
+
 
 FreeCADGui.addCommand('Results', ResultsCommand())

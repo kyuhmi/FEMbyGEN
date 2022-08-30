@@ -44,62 +44,19 @@ def searchAnalysed():
     return (statuses, numAnalysed)
 
 
-def writeAnalysisStatusToFile():
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-
-    (statuses, numAnalysed) = searchAnalysed()
-    filePath = workingDir + "/AnalysisStatus.txt"
-    f = open(filePath, "w")
-    f.write(str(numAnalysed) + "\n")
-    [f.write(status+"\n") for status in statuses]
-    print(statuses)
-    f.close()
-
-    return (statuses, numAnalysed)
-
-
-def checkAnalyses():    # Reads AnalysisStatus.txt for results of analysis
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-    filePath = workingDir + "/AnalysisStatus.txt"
-    try:
-        f = open(filePath)
-        text = f.read().split("\n")
-        numAnalysed = int(text[0])
-        statuses = text[1:]
-    except FileNotFoundError:
-        print("ERROR: AnalysisStatus.txt does not exist")
-        statuses = []
-        numAnalysed = 0
-    except:
-        print("An error occured while trying to read analysis results")
-        statuses = []
-        numAnalysed = 0
+def checkAnalyses():
+    doc = FreeCAD.ActiveDocument
+    statuses = doc.FEA.Status
+    numAnalysed = doc.FEA.NumberofAnalysis
 
     return (statuses, numAnalysed)
 
 
 def checkGenParameters():
-    try:
-        workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        filePath = workingDir + "/GeneratedParameters.txt"
-    except:
-        print("Please open a master file before creating generation")
-    header = []
-    parameters = []
-
-    try:
-        f = open(filePath)
-        text = f.read().split("\n")
-        header = text[0].split(",")
-        for line in text[1:-1]:
-            result = line.split(",")
-            parameters.append(result)
-    except FileNotFoundError:
-        print("ERROR: GeneratedParameters.txt does not exist")
-        header = [""]
-        parameters = []
-    except:
-        print("An error occured while trying to read generation parameters")
+    doc = FreeCAD.ActiveDocument
+    header = doc.Generate.Parameters_Name
+    parameters = doc.Generate.Generated_Parameters
+    if parameters == None:
         header = [""]
         parameters = []
 
@@ -126,8 +83,8 @@ def calcAndSaveFEAMetrics():
         print("Table of results: ")
         print(table)
 
-        # Save FEA metrics to .npy file
-        np.save(workingDir + "/FEAMetrics.npy", np.array(table))
+        doc = FreeCAD.ActiveDocument
+        doc.Results.FEAMetrics = table
 
 
 def calculateFEAMetric(FRDFilePath):
@@ -216,26 +173,29 @@ def hsvToRgb(h, s, v):
 
 
 def showGen(item):
-        global old
-        index=item.row()+1
-        old=FreeCAD.ActiveDocument.Name
-        if old[:3]=="Gen":
-            FreeCAD.closeDocument(old)
+    global old
+    index = item.row()+1
+    old = FreeCAD.ActiveDocument.Name
+    if old[:3] == "Gen":
+        FreeCAD.closeDocument(old)
 
-        # Open the generation
-        workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        docPath = workingDir + \
-            f"/Gen{index}/Gen{index}.FCStd"
-        docName = f"Gen{index}"
-        FreeCAD.open(docPath)
-        FreeCAD.setActiveDocument(docName)
+    # Open the generation
+    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+    docPath = workingDir + \
+        f"/Gen{index}/Gen{index}.FCStd"
+    docName = f"Gen{index}"
+    FreeCAD.open(docPath)
+    FreeCAD.setActiveDocument(docName)
 
 
 class GenTableModel(PySide.QtCore.QAbstractTableModel):
     def __init__(self, parent, itemList, header, colours=None, *args):
 
         PySide.QtCore.QAbstractTableModel.__init__(self, parent, *args)
-        self.itemList = copy.deepcopy(itemList)
+        self.itemList = []
+        for i in itemList:
+            self.itemList.append(list(i))
+
         self.header = header[:]
         height = len(itemList)
         width = len(header)
@@ -278,7 +238,7 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
             # Return colour
             return self.colours[index.row()][index.column()]
         elif role == PySide.QtCore.Qt.DisplayRole:
-            return self.itemList[index.row()][index.column()]
+            return str(self.itemList[index.row()][index.column()])
 
     def headerData(self, col, orientation, role):
         if orientation == PySide.QtCore.Qt.Horizontal and role == PySide.QtCore.Qt.DisplayRole:

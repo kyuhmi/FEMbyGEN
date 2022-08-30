@@ -1,13 +1,16 @@
-import FreeCAD, FreeCADGui
+import FreeCAD
+import FreeCADGui
+
 
 def makeInitiate():
     try:
-        group=FreeCAD.ActiveDocument.Generative_Design
+        group = FreeCAD.ActiveDocument.Generative_Design
         group.isValid()
     except:
-        doc=FreeCAD.ActiveDocument
-        group = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroupPython", "Generative Design")
-        parameter=doc.addObject('Spreadsheet::Sheet','Parameters')
+        doc = FreeCAD.ActiveDocument
+        group = FreeCAD.ActiveDocument.addObject(
+            "App::DocumentObjectGroupPython", "Generative Design")
+        parameter = doc.addObject('Spreadsheet::Sheet', 'Parameters')
         group.addObject(parameter)
     Initiate(group)
     if FreeCAD.GuiUp:
@@ -17,31 +20,13 @@ def makeInitiate():
 
 class Initiate:
     """ Initiate """
+
     def __init__(self, obj):
         obj.Proxy = self
         self.Type = "Initiate"
         self.initProperties(obj)
 
     def initProperties(self, obj):
-        # obj.supportedProperties()
-        # ['App::PropertyBool', 'App::PropertyBoolList', 'App::PropertyFloat', 'App::PropertyFloatList',
-        #  'App::PropertyFloatConstraint', 'App::PropertyPrecision', 'App::PropertyQuantity',
-        #  'App::PropertyQuantityConstraint', 'App::PropertyAngle', 'App::PropertyDistance', 'App::PropertyLength',
-        #  'App::PropertyArea', 'App::PropertyVolume', 'App::PropertySpeed', 'App::PropertyAcceleration',
-        #  'App::PropertyForce', 'App::PropertyPressure', 'App::PropertyInteger', 'App::PropertyIntegerConstraint',
-        #  'App::PropertyPercent', 'App::PropertyEnumeration', 'App::PropertyIntegerList', 'App::PropertyIntegerSet',
-        #  'App::PropertyMap', 'App::PropertyString', 'App::PropertyUUID', 'App::PropertyFont',
-        #  'App::PropertyStringList', 'App::PropertyLink', 'App::PropertyLinkChild', 'App::PropertyLinkGlobal',
-        #  'App::PropertyLinkSub', 'App::PropertyLinkSubChild', 'App::PropertyLinkSubGlobal', 'App::PropertyLinkList',
-        #  'App::PropertyLinkListChild', 'App::PropertyLinkListGlobal', 'App::PropertyLinkSubList',
-        #  'App::PropertyLinkSubListChild', 'App::PropertyLinkSubListGlobal', 'App::PropertyMatrix',
-        #  'App::PropertyVector', 'App::PropertyVectorDistance', 'App::PropertyPosition', 'App::PropertyDirection',
-        #  'App::PropertyVectorList', 'App::PropertyPlacement', 'App::PropertyPlacementList',
-        #  'App::PropertyPlacementLink', 'App::PropertyColor', 'App::PropertyColorList', 'App::PropertyMaterial',
-        #  'App::PropertyMaterialList', 'App::PropertyPath', 'App::PropertyFile', 'App::PropertyFileIncluded',
-        #  'App::PropertyPythonObject', 'App::PropertyExpressionEngine', 'Part::PropertyPartShape',
-        #  'Part::PropertyGeometryList', 'Part::PropertyShapeHistory', 'Part::PropertyFilletEdges',
-        #  'Fem::PropertyFemMesh', 'Fem::PropertyPostDataObject']
         pass
 
 
@@ -49,49 +34,52 @@ class InitiateCommand():
     """Analyse the generated parts"""
 
     def GetResources(self):
-        return {'Pixmap'  : 'fembygen/Initiate.svg',  # the name of a svg file available in the resources
-                'Accel' : "Shift+N",  # a default shortcut (optional)
+        return {'Pixmap': 'fembygen/Initiate.svg',  # the name of a svg file available in the resources
+                'Accel': "Shift+N",  # a default shortcut (optional)
                 'MenuText': "Initiate",
-                'ToolTip' : "Initialise the generation process"}
+                'ToolTip': "Initialise the generation process"}
 
-    def Activated(self): 
+    def Activated(self):
         makeInitiate()
         return InitiatePanel()
-    
+
     def IsActive(self):
         """Here you can define if the command must be active or not (greyed) if certain conditions
         are met or not. This function is optional."""
         return FreeCAD.ActiveDocument is not None
 
+
 class InitiatePanel:
-    def __init__(self):  
-        #create a group 
+    def __init__(self):
+        # create a group
         # group = FreeCAD.ActiveDocument.addObject("App::DocumentObjectGroupPython", "Generative Design")
         # Add spreatsheet
-        doc=FreeCAD.ActiveDocument
-        self.paramsheet=doc.Parameters
+        doc = FreeCAD.ActiveDocument
+        self.paramsheet = doc.Parameters
         # Spreadsheet editing
         for i in range(10):
-            self.paramsheet.set(f'A{i+2}',f'{i+1}.Parameter')
+            self.paramsheet.set(f'A{i+2}', f'{i+1}.Parameter')
             self.paramsheet.setStyle(f'A{i+2}:A{i+2}', 'bold', 'add')
 
-        self.paramsheet.set('B1','Parameter Name')
-        self.paramsheet.set('C1','Min Value')
-        self.paramsheet.set('D1','Max Value')
-        self.paramsheet.set('E1','Number of Generations')
+        self.paramsheet.set('B1', 'Parameter Name')
+        self.paramsheet.set('C1', 'Min Value')
+        self.paramsheet.set('D1', 'Max Value')
+        self.paramsheet.set('E1', 'Number of Generations')
         self.paramsheet.setStyle('B1:E1', 'bold', 'add')
-        self.paramsheet.setForeground('A2:A100', (1.000000,0.000000,0.000000,1.000000))
-        self.paramsheet.setForeground('B1:E1', (0.000000,0.501961,0.000000,1.000000))
+        self.paramsheet.setForeground(
+            'A2:A100', (1.000000, 0.000000, 0.000000, 1.000000))
+        self.paramsheet.setForeground(
+            'B1:E1', (0.000000, 0.501961, 0.000000, 1.000000))
         self.paramsheet.setAlignment('C2:E100', 'left|vcenter|vimplied')
         doc.recompute()
 
-         
+
 class ViewProviderIni:
     def __init__(self, vobj):
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path =  FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/icon.svg"
+        icon_path = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/icon.svg"
         return icon_path
 
     def attach(self, vobj):
@@ -109,5 +97,6 @@ class ViewProviderIni:
 
     def __setstate__(self, state):
         return None
+
 
 FreeCADGui.addCommand('Initiate', InitiateCommand())
