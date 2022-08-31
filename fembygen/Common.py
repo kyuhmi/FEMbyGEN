@@ -66,87 +66,40 @@ def checkGenParameters():
 def calcAndSaveFEAMetrics():
     workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
     numGenerations = checkGenerations()
-
+    doc = FreeCAD.ActiveDocument
     if numGenerations > 0:
         #table = [["Node Count", "Elem Count", "Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
-        table = [["Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
-        for i in range(1, numGenerations+1):
-            filePath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
-            if not os.path.isfile(filePath):
-                filePath = workingDir + f"/Gen{i}/FEMMeshGmsh.frd"
-            r = calculateFEAMetric(filePath)
-            result = [r["MaxStress"], r["MeanStress"],
-                      r["MaxDisp"], r["MeanDisp"]]
-            result = [str(r) for r in result]
-            table.append(result)
-
-        print("Table of results: ")
-        print(table)
-
-        doc = FreeCAD.ActiveDocument
-        doc.Results.FEAMetrics = table
+            table = [["Mean Stress", "Max Stress", "Max Disp"]]
+        # for i in range(1, numGenerations+1):
+            # filePath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
+            # if not os.path.isfile(filePath):
+            #     filePath = workingDir + f"/Gen{i}/FEMMeshGmsh.frd"
+            result = calculateFEAMetric()
+            # result = [r["MaxStress"], r["MeanStress"],
+            #           r["MaxDisp"], r["MeanDisp"]]
+            # result = [f"{r:.2e}"for r in result]
+            table += result
+            print("Table of results: ")
+            print(table) 
+            doc.Results.FEAMetrics = table
 
 
-def calculateFEAMetric(FRDFilePath):
-    result = None
-    try:
-        parser = FRDParser.FRDParser(FRDFilePath)
-
-        nodeCount = parser.frd.node_block.numnod
-        elemCount = parser.frd.elem_block.numelem
-
-        stresses = np.zeros((nodeCount, 4), dtype=np.float32)
-        disp = np.zeros((nodeCount, 4), dtype=np.float32)
-        error = np.zeros((nodeCount, 1), dtype=np.float32)
-        for i in range(nodeCount):
-            stresses[i, 0:3] = parser.get_results_node(
-                i + 1, names="STRESS")[0][0:3]
-            disp[i, 0:3] = parser.get_results_node(i + 1, names="DISP")[0][0:3]
-            error[i] = parser.get_results_node(i + 1, names="ERROR")[0]
-
-        # Calculate resultant stresses and displacements
-        stresses[:, 3] = np.sqrt(np.square(
-            stresses[:, 0]) + np.square(stresses[:, 1]) + np.square(stresses[:, 2]))
-        disp[:, 3] = np.sqrt(np.square(disp[:, 0]) +
-                             np.square(disp[:, 1]) + np.square(disp[:, 2]))
-
-        # Find max and mean for stress, displacement, and error
-        resultantStress = stresses[:, 3]
-        maxStress = round(max(resultantStress), 3)
-        meanStress = round(np.mean(resultantStress), 3)
-
-        resultantDisp = disp[:, 3]
-        maxDisp = round(max(resultantDisp), 3)
-        meanDisp = round(np.mean(resultantDisp), 3)
-
-        maxError = round(max(error)[0], 1)
-        meanError = round((np.mean(error)), 1)
-
-        # Store results in dictionary to be returned by function
-        result = {
-            "NodeCount": nodeCount,
-            "ElemCount": elemCount,
-            "MaxStress": maxStress,
-            "MeanStress": meanStress,
-            "MaxDisp": maxDisp,
-            "MeanDisp": meanDisp,
-            "MaxError": maxError,
-            "MeanError": meanError
-        }
-    except:
-        print("Analysis failed on generation")
-        result = {
-            "NodeCount": None,
-            "ElemCount": None,
-            "MaxStress": None,
-            "MeanStress": None,
-            "MaxDisp":    None,
-            "MeanDisp":   None,
-            "MaxError":   None,
-            "MeanError":  None
-        }
-    finally:
-        return result
+def calculateFEAMetric():
+    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+    statuses,numgAnly = searchAnalysed()
+    result=[]
+    for i, j in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
+        filename = f"Gen{i+1}"
+        filePath = workingDir + f"/Gen{i+1}/" + filename+".FCStd"
+        doc = FreeCAD.open(filePath, hidden=True)
+        mean=np.mean(doc.CCX_Results.vonMises)
+        max=np.max(doc.CCX_Results.vonMises)
+        maxDisp=np.max(doc.CCX_Results.DisplacementLengths)
+        # Energy=np.max()    #TODO calculate the energy of the deformation
+        result.append([f"{mean:.2e}",f"{max:.2e}",f"{maxDisp:.2e}"])
+        print(result)
+        FreeCAD.closeDocument(filename)
+    return result
 
 
 def hsvToRgb(h, s, v):
