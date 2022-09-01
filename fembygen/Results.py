@@ -12,7 +12,7 @@ def makeResult():
         obj.isValid()
     except:
         obj = FreeCAD.ActiveDocument.addObject(
-            "Part::FeaturePython", "Results")
+            "App::DocumentObjectGroupPython", "Results")
         FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
     Result(obj)
     if FreeCAD.GuiUp:
@@ -71,13 +71,13 @@ class ResultsPanel:
         self.numGenerations = Common.checkGenerations()
         self.obj = object
 
-        doc = FreeCAD.ActiveDocument
-        if doc.Results.FEAMetrics == []:
+        master = object.Object.Document
+        if master.Results.FEAMetrics == []:
             print("Calculating metrics...")
-            Common.calcAndSaveFEAMetrics()
-
+            Common.calcAndSaveFEAMetrics(master)
+            FreeCAD.open(object.Object.Document.FileName)
         # Load metrics from file
-        table = doc.Results.FEAMetrics
+        table = master.Results.FEAMetrics
 
         # Split into header and table data, then update table
         self.metricNames = table[0]

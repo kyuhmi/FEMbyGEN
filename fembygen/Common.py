@@ -63,29 +63,20 @@ def checkGenParameters():
     return (header, parameters)
 
 
-def calcAndSaveFEAMetrics():
+def calcAndSaveFEAMetrics(master):
     workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
     numGenerations = checkGenerations()
-    doc = FreeCAD.ActiveDocument
     if numGenerations > 0:
-        #table = [["Node Count", "Elem Count", "Max Stress", "Mean Stress", "Max Disp", "Mean Disp"]]
-            table = [["Mean Stress", "Max Stress", "Max Disp"]]
-        # for i in range(1, numGenerations+1):
-            # filePath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
-            # if not os.path.isfile(filePath):
-            #     filePath = workingDir + f"/Gen{i}/FEMMeshGmsh.frd"
-            result = calculateFEAMetric()
-            # result = [r["MaxStress"], r["MeanStress"],
-            #           r["MaxDisp"], r["MeanDisp"]]
-            # result = [f"{r:.2e}"for r in result]
-            table += result
-            print("Table of results: ")
-            print(table) 
-            doc.Results.FEAMetrics = table
+        table = [["Mean Stress", "Max Stress", "Max Disp"]]
 
+        result = calculateFEAMetric(master)
+        table += result
+        # print("Table of results: ")
+        # print(table) 
+        master.Results.FEAMetrics = table
 
-def calculateFEAMetric():
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+def calculateFEAMetric(master):
+    workingDir = '/'.join(master.FileName.split('/')[0:-1])
     statuses,numgAnly = searchAnalysed()
     result=[]
     for i, j in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
@@ -97,8 +88,15 @@ def calculateFEAMetric():
         maxDisp=np.max(doc.CCX_Results.DisplacementLengths)
         # Energy=np.max()    #TODO calculate the energy of the deformation
         result.append([f"{mean:.2e}",f"{max:.2e}",f"{maxDisp:.2e}"])
-        print(result)
+        doc.CCX_Results.Label=f"Gen{i+1}_Results"
+        doc.ResultMesh.Label=f"Gen{i+1}_Mesh"
+        master.copyObject(doc.CCX_Results, False)
+        master.copyObject(doc.ResultMesh, False)
         FreeCAD.closeDocument(filename)
+
+        master.getObjectsByLabel(f"Gen{i+1}_Results")[0].Mesh=master.getObjectsByLabel(f"Gen{i+1}_Mesh")[0]
+        master.Results.addObject(master.getObjectsByLabel(f"Gen{i+1}_Results")[0])
+     
     return result
 
 

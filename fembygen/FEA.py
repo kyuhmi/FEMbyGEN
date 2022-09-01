@@ -171,7 +171,7 @@ class FEAPanel:
         from femtools import ccxtools
         fea = ccxtools.FemToolsCcx()
         fea.update_objects()
-        fea.setup_working_dir(self.workingDir+f"/Gen{GenerationNumber}")
+        # fea.setup_working_dir(self.workingDir+f"/Gen{GenerationNumber}")
         fea.setup_ccx()
         message = fea.check_prerequisites()
         if not message:

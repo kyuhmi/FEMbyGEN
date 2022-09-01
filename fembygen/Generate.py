@@ -165,7 +165,8 @@ class GeneratePanel():
                 return
 
             filename = f"Gen{i+1}.FCStd"
-            filePath = self.workingDir + f"/Gen{i+1}/" + filename
+            directory = self.workingDir + f"/Gen{i+1}/"
+            filePath = directory + filename
             shutil.copy(docPath, filePath)
             shutil.copy(filePath, filePath+".backup")
 
@@ -178,7 +179,8 @@ class GeneratePanel():
                     f'C{k+2}', f'{numgenerations[i][k]}')
                 doc.Parameters.clear(f'D1:D{k+2}')
                 doc.Parameters.clear(f'E1:E{k+2}')
-
+            # define analysis working directory
+            doc.SolverCcxTools.WorkingDir=directory
             # Removing generative design container in the file
             for l in doc.Generative_Design.Group:
                 if l.Name == "Parameters":
@@ -197,6 +199,12 @@ class GeneratePanel():
 
         # Reopen document again once finished
         FreeCAD.open(docPath)
+        # Delete if earlier generative objects exist
+        for l in self.doc.Generative_Design.Group:
+                if l.Name == "Parameters" or l.Name == "Generate":
+                    pass
+                else:
+                    self.doc.removeObject(l.Name)
         self.doc.Generate.Generated_Parameters = numgenerations
         self.doc.Generate.Parameters_Name = paramNames
         # self.saveGenParamsToFile()
