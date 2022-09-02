@@ -76,17 +76,18 @@ class GeneratePanel():
         guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Generate.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
-            FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+            object.Object.Document.FileName.split('/')[0:-1])
         readyText = "Ready"
         # Data variables for parameter table
 
-        (paramNames, parameterValues) = Common.checkGenParameters()
-        self.doc = FreeCAD.ActiveDocument
+        self.doc = object.Object.Document
+        (paramNames, parameterValues) = Common.checkGenParameters(self.doc)
         self.doc.Generate.Parameters_Name = paramNames
         self.doc.Generate.Generated_Parameters = parameterValues
         # Check if any generations have been made already, and up to what number
 
-        numGens = self.checkGenerations()
+        numGens = Common.checkGenerations(self.workingDir)
+        self.resetViewControls(numGens)
 
         self.form.numGensLabel.setText(f"{numGens} generations produced")
         self.form.readyLabel.setText(readyText)
@@ -116,22 +117,27 @@ class GeneratePanel():
             gmsh_mesh.create_mesh()
 
     def generateParts(self):
-        doc = FreeCAD.ActiveDocument
-        doc.save()  # saving the prepared masterfile
-        docPath = doc.FileName
+        master=self.doc
+        master.save()  # saving the prepared masterfile
+        docPath = master.FileName
 
         # Getting spreadsheet from FreeCAD
         paramNames = []
-        mins = []
-        maxs = []
         numberofgen = []
         self.detection = []
         self.inumber = []
+            
+        # Delete if earlier generative objects exist
+        for l in master.Generative_Design.Group:
+                if l.Name == "Parameters" or l.Name == "Generate":
+                    pass
+                else:
+                    master.removeObject(l.Name)
 
         # Getting number of parameters
         try:
             for i in range(99):
-                self.detection.append(doc.Parameters.get(f'C{i+2}'))
+                self.detection.append(master.Parameters.get(f'C{i+2}'))
         except:
             self.inumber.append(i)
 
@@ -139,15 +145,23 @@ class GeneratePanel():
 
         #  Getting datas from Spreadsheet
         for i in range(self.inumber[0]):
-            paramNames.append(doc.Parameters.get(f'B{i+2}'))
-            mins = float(doc.Parameters.get(f'C{i+2}'))
-            maxs = float(doc.Parameters.get(f'D{i+2}'))
-            numberofgen = int(doc.Parameters.get(f'E{i+2}'))
+            paramNames.append(master.Parameters.get(f'B{i+2}'))
+            mins = float(master.Parameters.get(f'C{i+2}'))
+            maxs = float(master.Parameters.get(f'D{i+2}'))
+            numberofgen = int(master.Parameters.get(f'E{i+2}'))
             param.append(np.linspace(mins, maxs, numberofgen))
 
-        self.form.progressBar.setStyleSheet("{"
-                                            "background-color: green;"
-                                            "}")
+        self.form.progressBar.setStyleSheet(
+                          "background-color: #74c8ff;"
+                          "color: #0a9dff;"
+                          "border-style: outset;"
+                          "border-width: 2px;"
+                          "border-color: #74c8ff;"
+                          "border-radius: 7px;"
+                          "text-align: left; }"
+
+                          "QProgressBar::chunk {"
+                          "background-color: #010327; }")
         # Combination of all parameters
         numgenerations = list(itertools.product(*param))
         for i in range(len(numgenerations)):
@@ -155,7 +169,7 @@ class GeneratePanel():
             try:
                 os.mkdir(self.workingDir + f"/Gen{i+1}")
             except:
-                print(
+                FreeCAD.Console.PrintError(
                     f"Please delete earlier generations: Gen{i+1} already exist in the folder")
                 self.form.progressBar.setValue(100)
                 self.form.progressBar.setStyleSheet("{"
@@ -197,52 +211,47 @@ class GeneratePanel():
             progress = ((i+1)/len(numgenerations)) * 100
             self.form.progressBar.setValue(progress)
 
-        # Reopen document again once finished
-        FreeCAD.open(docPath)
-        # Delete if earlier generative objects exist
-        for l in self.doc.Generative_Design.Group:
-                if l.Name == "Parameters" or l.Name == "Generate":
-                    pass
-                else:
-                    self.doc.removeObject(l.Name)
-        self.doc.Generate.Generated_Parameters = numgenerations
-        self.doc.Generate.Parameters_Name = paramNames
-        # self.saveGenParamsToFile()
+        # ReActivate document again once finished
+        FreeCAD.setActiveDocument(master.Name)
+        master.Generate.Generated_Parameters = numgenerations
+        master.Generate.Parameters_Name = paramNames
         self.updateParametersTable()
 
         # Update number of generations produced in window
-        numGens = self.checkGenerations()
+        numGens = Common.checkGenerations(self.workingDir)
         self.form.numGensLabel.setText(str(numGens) + " generations produced")
         self.form.readyLabel.setText("Finished")
+        self.resetViewControls(numGens)
         self.updateParametersTable()
-        print("Generation done successfully!")
+        FreeCAD.Console.PrintMessage("Generation done successfully!")
 
     def deleteGenerations(self):
-        print("Deleting...")
-        numGens = self.checkGenerations()
+        FreeCAD.Console.PrintMessage("Deleting...")
+        numGens = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
             # Delete analysis directories
             try:
                 shutil.rmtree(self.workingDir + f"/Gen{i}/")
-                print(self.workingDir + f"/Gen{i}/ deleted")
+                FreeCAD.Console.PrintMessage(self.workingDir + f"/Gen{i}/ deleted")
             except FileNotFoundError:
-                print("INFO: Generation " + str(i) +
+                FreeCAD.Console.PrintError("INFO: Generation " + str(i) +
                       " analysis data not found")
                 pass
             except:
-                print(
+                FreeCAD.Console.PrintError(
                     "Error while trying to delete analysis folder for generation " + str(i))
 
         self.doc.Generate.Generated_Parameters = None
+        self.resetViewControls(numGens)
         self.updateParametersTable()
 
-    def checkGenerations(self):
-        numGens = 1
-        while os.path.isdir(self.workingDir + "/Gen" + str(numGens)):
-            numGens += 1
-        self.resetViewControls(numGens-1)
+    # def checkGenerations(self):
+    #     numGens = 1
+    #     while os.path.isdir(self.workingDir + "/Gen" + str(numGens)):
+    #         numGens += 1
+    #     self.resetViewControls(numGens-1)
 
-        return numGens-1
+    #     return numGens-1
 
     def nextG(self, numGens):
         index = self.form.selectGenBox.currentIndex()
@@ -273,7 +282,7 @@ class GeneratePanel():
             f"/Gen{self.selectedGen}/Gen{self.selectedGen}.FCStd"
         docName = f"Gen{self.selectedGen}"
         FreeCAD.open(docPath)
-        FreeCAD.setActiveDocument(docName)
+        # FreeCAD.setActiveDocument(docName)
 
     def resetViewControls(self, numGens):
         comboBoxItems = []
@@ -297,7 +306,7 @@ class GeneratePanel():
             self.form.selectGenBox.clear()
 
     def updateParametersTable(self):
-        paramNames, parameterValues = Common.checkGenParameters()
+        paramNames, parameterValues = Common.checkGenParameters(self.doc)
         tableModel = Common.GenTableModel(
             self.form, parameterValues, paramNames)
         tableModel.layoutChanged.emit()
@@ -308,10 +317,12 @@ class GeneratePanel():
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
+        Common.showGen("close") #closes the gen file If a generated file opened to check before
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
+        Common.showGen("close") #closes the gen file If a generated file opened to check before
 
 
 class ViewProviderGen:

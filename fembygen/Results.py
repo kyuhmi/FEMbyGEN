@@ -67,13 +67,13 @@ class ResultsPanel:
         guiPath = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/Results.ui"
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
-            FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        self.numGenerations = Common.checkGenerations()
+            object.Object.Document.FileName.split('/')[0:-1])
+        self.numGenerations = Common.checkGenerations(self.workingDir)
         self.obj = object
 
         master = object.Object.Document
         if master.Results.FEAMetrics == []:
-            print("Calculating metrics...")
+            FreeCAD.Console.PrintMessage("Calculating metrics...")
             Common.calcAndSaveFEAMetrics(master)
             FreeCAD.open(object.Object.Document.FileName)
         # Load metrics from file
@@ -87,6 +87,7 @@ class ResultsPanel:
         self.addConfigControls()
 
         self.updateResultsTable()
+        master.save()
 
     def updateResultsTable(self):
         header = self.metricNames
@@ -225,10 +226,12 @@ class ResultsPanel:
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
+        Common.showGen("close") #closes the gen file If a generated file opened to check before
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
+        Common.showGen("close") #closes the gen file If a generated file opened to check before
 
 
 class ViewProviderResult:
