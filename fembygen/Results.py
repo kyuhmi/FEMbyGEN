@@ -87,7 +87,7 @@ class ResultsPanel:
         self.addConfigControls()
 
         self.updateResultsTable()
-        master.save()
+        # master.save()
 
     def updateResultsTable(self):
         header = self.metricNames

@@ -66,12 +66,12 @@ def calcAndSaveFEAMetrics(master):
     workingDir = '/'.join(master.FileName.split('/')[0:-1])
     numGenerations = checkGenerations(workingDir)
     if numGenerations > 0:
-        table = [["Mean Stress", "Max Stress", "Max Disp"]]
+        table = [["Volume[mm^3]", "Internal Energy[Joule]", "Standard Dev. of En. Den","Mean Stress[MPa]", "Max Stress[MPa]", "Max Disp[mm]"]]
 
         result = calculateFEAMetric(master)
         table += result
-        # print("Table of results: ")
-        # print(table) 
+        print("Table of results: ")
+        print(table) 
         master.Results.FEAMetrics = table
 
 def calculateFEAMetric(master):
@@ -88,10 +88,12 @@ def calculateFEAMetric(master):
         maxDisp=np.max(doc.CCX_Results.DisplacementLengths)
         # Energy=np.max()    #TODO calculate the energy of the deformation
 
-        intData, totalInt, volData, totalVol =IntEnergyandVolume(resultPath)
+        intData, totalInt, volData, totalVol, denData =IntEnergyandVolume(resultPath)
+        # energyDensity= intData[:,1]/volData[:,1] #checked for ELSE results and ENER results of calculix outputs
+        energyDenStd=np.std(denData)
 
-
-        result.append([f"{mean:.2e}",f"{max:.2e}",f"{maxDisp:.2e}"])
+        result.append([f"{totalVol:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}", f"{mean:.2e}",
+                        f"{max:.2e}",f"{maxDisp:.2e}"])
         doc.CCX_Results.Label=f"Gen{i+1}_Results"
         doc.ResultMesh.Label=f"Gen{i+1}_Mesh"
         master.copyObject(doc.CCX_Results, False)
@@ -108,7 +110,7 @@ def calculateFEAMetric(master):
 def IntEnergyandVolume(resultPath):
     """to get volume information and internal energy information from dat file"""
     name= glob.glob(resultPath + "*.dat")
-   
+    print(name)
     with open(name[0],"r") as datfile:
         text=datfile.read()
         
@@ -117,7 +119,7 @@ def IntEnergyandVolume(resultPath):
     internalStart =text.find("\n",internal)+2
     internalEnd = text.find(" total internal", internalStart)-1
     intData=np.fromstring(text[internalStart:internalEnd],sep="\n")
-    intData.reshape(len(intData)//2,2)
+    intData=intData.reshape(len(intData)//2,2)
 
     # getting total internal energy
     totalIntStart=text.find("\n", internalEnd+1)+1
@@ -128,12 +130,20 @@ def IntEnergyandVolume(resultPath):
     volStart=text.find("\n", totalIntEnd+1)+1
     volEnd=text.find("total volume", totalIntStart)-1
     volData=np.fromstring(text[volStart:volEnd],sep="\n")
-    volData.reshape(len(intData)//2,2)
+    volData=volData.reshape(len(volData)//2,2)
 
     # getting total volume
     totalVolStart=text.find("\n", volEnd+1)+1
-    totalVol=float(text[totalVolStart:-1])
-    return intData, totalInt, volData, totalVol
+    totalVolEnd=text.find("internal energy density", totalVolStart)-1
+    totalVol=float(text[totalVolStart:totalVolEnd])
+    
+    # getting density from file
+    denStart=text.find("\n", totalVolEnd+1)+1
+    denEnd=-1 # text.find("total volume", totalVolStart)
+    denData=np.fromstring(text[denStart:denEnd],sep="\n")
+    denData=denData.reshape(len(denData)//3,3)
+    
+    return intData[:,1]*1000, totalInt*1000, volData[:,1], totalVol, denData[:,2]*1000 # Joule , Joule, mm^3, mm^3, Joule
 
 def hsvToRgb(h, s, v):
     if s == 0.0:

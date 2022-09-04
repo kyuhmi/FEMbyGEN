@@ -175,7 +175,7 @@ class FEAPanel:
         with open(name[0],"r") as old:
             text=old.read()
             end_loc = text.find("RF\n")
-            outputs="\n*EL PRINT, ELSET=Eall, TOTALS=YES \nELSE, EVOL\n"
+            outputs="\n*EL PRINT, ELSET=Eall, TOTALS=YES \nELSE, EVOL, ENER\n"
             newText=text[:end_loc+3] + outputs + text[end_loc+3:]
 
         with open(name[0],"w") as new:
