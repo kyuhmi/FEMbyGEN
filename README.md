@@ -8,7 +8,7 @@ This folder contains the code for a workbench plug-in for FreeCAD. Therefore you
 
 FreeCAD 0.20 can be downloaded for free from https://www.freecadweb.org/
 
-Once installed, you must manually copy the 'AMGeneration2' folder to the user 'Mod' directory for FreeCAD. On Windows, this is normally found in the following directory:
+Once installed, you must manually copy the 'FembyGen' folder to the user 'Mod' directory for FreeCAD. This is normally found in the following directory:
 
 in Windows:
 `C:\Users\*UserName*\AppData\Roaming\FreeCAD\Mod
@@ -18,6 +18,17 @@ in Linux
 
 Where `UserName` is replaced with the name of your user profile.
 
-Once copied, start up FreeCAD. From the workbench selection drop down menu in the top middle of the window, you should see the option for "FEMbyGEN". Selecting this will activate the workbench.
+Once copied, start up FreeCAD. From the workbench selection drop down menu in the top middle of the window, you should see the option for "FEMbyGEN". Selecting this will activate the workbench. All of the functions will work out of the box.
 
-Not all of the functions will work out of the box. Some dependencies need to be installed first, which is detailed in the section below.
+## Usage
+
+Create a Fem simulation in Freecad by using classical procedure which described freecad fem wiki pages. This file  will be your master simulation. 
+
+Then you can open fembygen workbench. First button for initialization. It will create a spreadsheet which name is Parameters. You can open it and write your parameters and number of generations. Then you can click second button to alias parameter names and dimensions. You can assign your dimensions by classical spreadsheet definition. Freecad wiki and youtube can help you how to define it.
+
+After then everything is easy, just click generate button, to create your new generations. You can check the files simply by clicking table in Gui.
+
+Then you can use Fea button to fem simulations of all created generations. 
+
+At the end, you can check all results by clicking results button. You can open the generated files by clicking table rows of results Gui. And all results also will come to master file, you can check tree view for that.
+  
