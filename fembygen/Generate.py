@@ -46,7 +46,7 @@ class GenerateCommand():
     """Produce part generations"""
 
     def GetResources(self):
-        return {'Pixmap': 'fembygen/Generate.svg',  # the name of a svg file available in the resources
+        return {'Pixmap': FreeCAD.getUserAppDataDir() +'Mod/fembygen/Generate.svg',  # the name of a svg file available in the resources
                 'Accel': "Shift+G",  # a default shortcut (optional)
                 'MenuText': "Generate",
                 'ToolTip': "Produce part generations"}
@@ -131,6 +131,9 @@ class GeneratePanel():
         for l in master.Generative_Design.Group:
                 if l.Name == "Parameters" or l.Name == "Generate":
                     pass
+                elif l.Name=="Results":
+                    for m in master.Results:
+                        master.removeObject(m.name)
                 else:
                     master.removeObject(l.Name)
 
@@ -226,13 +229,13 @@ class GeneratePanel():
         FreeCAD.Console.PrintMessage("Generation done successfully!")
 
     def deleteGenerations(self):
-        FreeCAD.Console.PrintMessage("Deleting...")
+        FreeCAD.Console.PrintMessage("Deleting...\n")
         numGens = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
             # Delete analysis directories
             try:
                 shutil.rmtree(self.workingDir + f"/Gen{i}/")
-                FreeCAD.Console.PrintMessage(self.workingDir + f"/Gen{i}/ deleted")
+                FreeCAD.Console.PrintMessage(self.workingDir + f"/Gen{i}/ deleted\n")
             except FileNotFoundError:
                 FreeCAD.Console.PrintError("INFO: Generation " + str(i) +
                       " analysis data not found")

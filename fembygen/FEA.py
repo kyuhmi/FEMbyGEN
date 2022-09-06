@@ -1,12 +1,11 @@
-import FreeCAD
-import FreeCADGui
+import FreeCAD, FreeCADGui, FemGui
 import os.path
 from fembygen import Common
 import shutil
 import os
 import PySide
 import glob
-
+from femtools import ccxtools
 
 def makeFEA():
     try:
@@ -43,7 +42,7 @@ class FEACommand():
     """Perform FEA on generated parts"""
 
     def GetResources(self):
-        return {'Pixmap': 'fembygen/FEA.svg',  # the name of a svg file available in the resources
+        return {'Pixmap': FreeCAD.getUserAppDataDir() +'Mod/fembygen/FEA.svg',  # the name of a svg file available in the resources
                 'Accel': "Shift+A",  # a default shortcut (optional)
                 'MenuText': "FEA Generations",
                 'ToolTip': "Perform FEA on generated parts"}
@@ -96,7 +95,6 @@ class FEAPanel:
             fileName = self.workingDir + f"/Gen{i}/"
             files = os.listdir(fileName)
             for j in files:
-
                 if j[-6:] == "backup":
                     pass
                 else:
@@ -118,8 +116,13 @@ class FEAPanel:
             Gen_Doc=FreeCAD.open(filePath, hidden=True)
             FreeCAD.setActiveDocument(partName)
 
-            # Run FEA solver on generation
-            self.performFEA(Gen_Doc, i+1)
+            # get the loadcases from the generation file
+            analysis=[]
+            for obj in FreeCAD.ActiveDocument.Objects:
+                if obj.TypeId=="Fem::FemAnalysis":   #to choose analysis objects
+                    FemGui.setActiveAnalysis(obj) 
+                   # Run FEA solver on generation
+                    self.performFEA(Gen_Doc, obj, i+1)
 
             # Close generated part
             FreeCAD.closeDocument(partName)
@@ -181,11 +184,11 @@ class FEAPanel:
         with open(name[0],"w") as new:
             new.write(newText)
 
-    def performFEA(self, doc, GenerationNumber):
+    def performFEA(self, doc, Analysis, GenerationNumber):
         doc.recompute()
         # run the analysis step by step
-        from femtools import ccxtools
-        fea = ccxtools.FemToolsCcx(analysis=doc.Analysis, solver=doc.SolverCcxTools)
+        
+        fea = ccxtools.FemToolsCcx(analysis=Analysis, solver=doc.SolverCcxTools)
         analysisDir=self.workingDir+f"/Gen{GenerationNumber}"
         fea.setup_working_dir(analysisDir)
         fea.update_objects()

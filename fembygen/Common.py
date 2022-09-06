@@ -5,8 +5,6 @@ from fembygen import FRDParser
 import numpy as np
 import copy
 import operator
-import glob
-
 
 def checkGenerations(workingDir):
     numGens = 1
@@ -62,88 +60,6 @@ def checkGenParameters(master):
     return (header, parameters)
 
 
-def calcAndSaveFEAMetrics(master):
-    workingDir = '/'.join(master.FileName.split('/')[0:-1])
-    numGenerations = checkGenerations(workingDir)
-    if numGenerations > 0:
-        table = [["Volume[mm^3]", "Internal Energy[Joule]", "Standard Dev. of En. Den","Mean Stress[MPa]", "Max Stress[MPa]", "Max Disp[mm]"]]
-
-        result = calculateFEAMetric(master)
-        table += result
-        print("Table of results: ")
-        print(table) 
-        master.Results.FEAMetrics = table
-
-def calculateFEAMetric(master):
-    workingDir = '/'.join(master.FileName.split('/')[0:-1])
-    statuses,numgAnly = searchAnalysed(master)
-    result=[]
-    for i, j in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
-        filename = f"Gen{i+1}"
-        filePath = workingDir + f"/Gen{i+1}/" + filename+".FCStd"
-        resultPath= workingDir + f"/Gen{i+1}/" 
-        doc = FreeCAD.open(filePath, hidden=True)
-        mean=np.mean(doc.CCX_Results.vonMises)
-        max=np.max(doc.CCX_Results.vonMises)
-        maxDisp=np.max(doc.CCX_Results.DisplacementLengths)
-        # Energy=np.max()    #TODO calculate the energy of the deformation
-
-        intData, totalInt, volData, totalVol, denData =IntEnergyandVolume(resultPath)
-        # energyDensity= intData[:,1]/volData[:,1] #checked for ELSE results and ENER results of calculix outputs
-        energyDenStd=np.std(denData)
-
-        result.append([f"{totalVol:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}", f"{mean:.2e}",
-                        f"{max:.2e}",f"{maxDisp:.2e}"])
-        doc.CCX_Results.Label=f"Gen{i+1}_Results"
-        doc.ResultMesh.Label=f"Gen{i+1}_Mesh"
-        master.copyObject(doc.CCX_Results, False)
-        master.copyObject(doc.ResultMesh, False)
-        FreeCAD.closeDocument(filename)
-
-        master.getObjectsByLabel(f"Gen{i+1}_Results")[0].Mesh=master.getObjectsByLabel(f"Gen{i+1}_Mesh")[0]
-        master.Results.addObject(master.getObjectsByLabel(f"Gen{i+1}_Results")[0])
-        master.getObjectsByLabel(f"Gen{i+1}_Results")[0].Visibility=False
-        master.getObjectsByLabel(f"Gen{i+1}_Mesh")[0].Visibility=False
-     
-    return result
-
-def IntEnergyandVolume(resultPath):
-    """to get volume information and internal energy information from dat file"""
-    name= glob.glob(resultPath + "*.dat")
-    print(name)
-    with open(name[0],"r") as datfile:
-        text=datfile.read()
-        
-    # getting elemental internal energy results
-    internal = text.find(" internal energy")
-    internalStart =text.find("\n",internal)+2
-    internalEnd = text.find(" total internal", internalStart)-1
-    intData=np.fromstring(text[internalStart:internalEnd],sep="\n")
-    intData=intData.reshape(len(intData)//2,2)
-
-    # getting total internal energy
-    totalIntStart=text.find("\n", internalEnd+1)+1
-    totalIntEnd=text.find("volume", totalIntStart)-1
-    totalInt=float(text[totalIntStart:totalIntEnd])
-
-    # getting elemnts volume
-    volStart=text.find("\n", totalIntEnd+1)+1
-    volEnd=text.find("total volume", totalIntStart)-1
-    volData=np.fromstring(text[volStart:volEnd],sep="\n")
-    volData=volData.reshape(len(volData)//2,2)
-
-    # getting total volume
-    totalVolStart=text.find("\n", volEnd+1)+1
-    totalVolEnd=text.find("internal energy density", totalVolStart)-1
-    totalVol=float(text[totalVolStart:totalVolEnd])
-    
-    # getting density from file
-    denStart=text.find("\n", totalVolEnd+1)+1
-    denEnd=-1 # text.find("total volume", totalVolStart)
-    denData=np.fromstring(text[denStart:denEnd],sep="\n")
-    denData=denData.reshape(len(denData)//3,3)
-    
-    return intData[:,1]*1000, totalInt*1000, volData[:,1], totalVol, denData[:,2]*1000 # Joule , Joule, mm^3, mm^3, Joule
 
 def hsvToRgb(h, s, v):
     if s == 0.0:
@@ -168,7 +84,7 @@ def hsvToRgb(h, s, v):
         return v, p, q
 
 
-def showGen(item):
+def showGen(doc, item):
     global old
     old = FreeCAD.ActiveDocument.Name
     if old[:3] == "Gen":
@@ -177,7 +93,7 @@ def showGen(item):
         return
     index = item.row()+1
     # Open the generation
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+    workingDir = '/'.join(doc.FileName.split('/')[0:-1])
     docPath = workingDir + \
         f"/Gen{index}/Gen{index}.FCStd"
     docName = f"Gen{index}"
