@@ -42,7 +42,7 @@ class ResultsCommand():
     """Show results of analysed generations"""
 
     def GetResources(self):
-        return {'Pixmap': FreeCAD.getUserAppDataDir() +'Mod/fembygen/Results.svg',  # the name of a svg file available in the resources
+        return {'Pixmap': os.path.join(FreeCAD.getUserAppDataDir() +'Mod/FEMbyGEN/fembygen/Results.svg'),  # the name of a svg file available in the resources
                 'Accel': "Shift+R",  # a default shortcut (optional)
                 'MenuText': "Show Results",
                 'ToolTip': "Show results of analysed generations"}
@@ -69,7 +69,7 @@ class ResultsPanel:
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
             object.Object.Document.FileName.split('/')[0:-1])
-        self.numGenerations = Common.checkGenerations(self.workingDir)
+        self.numGenerationsi, loadcase = Common.checkGenerations(self.workingDir)
         self.obj = object
 
         master = object.Object.Document
@@ -225,7 +225,7 @@ class ResultsPanel:
 
     def calcAndSaveFEAMetrics(self,master):
         workingDir = '/'.join(master.FileName.split('/')[0:-1])
-        numGenerations = checkGenerations(workingDir)
+        numGenerations, loadcase = Common.checkGenerations(workingDir)
         if numGenerations > 0:
             table = [["Volume[mm^3]", "Internal Energy[Joule]", "Standard Dev. of En. Den","Mean Stress[MPa]", "Max Stress[MPa]", "Max Disp[mm]"]]
 
@@ -237,7 +237,7 @@ class ResultsPanel:
 
     def calculateFEAMetric(self,master):
         workingDir = '/'.join(master.FileName.split('/')[0:-1])
-        statuses,numgAnly = searchAnalysed(master)
+        statuses,numgAnly,lc = Common.searchAnalysed(master)
         result=[]
         for i, j in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
             filename = f"Gen{i+1}"
@@ -323,7 +323,7 @@ class ViewProviderResult:
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path = 'fembygen/Results.svg'
+        icon_path = os.path.join(FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/Results.svg')
         return icon_path
 
     def attach(self, vobj):

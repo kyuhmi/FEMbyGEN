@@ -5,42 +5,51 @@ from fembygen import FRDParser
 import numpy as np
 import copy
 import operator
+import glob
 
 def checkGenerations(workingDir):
     numGens = 1
+    loadCase =1
     # workingDir = '/'.join(master.FileName.split('/')[0:-1])
     while os.path.isdir(workingDir + "/Gen" + str(numGens)):
         numGens += 1
 
-    return numGens-1
+    while os.path.isdir(workingDir + "/Gen1/loadCase" + str(loadCase)):
+        loadCase += 1
+
+    return numGens-1, loadCase-1
 
 
 def searchAnalysed(master):
     numAnalysed = 0
     statuses = []
-    # doc = FreeCAD.ActiveDocument
     workingDir = '/'.join(master.FileName.split('/')[0:-1])
-    numGenerations = checkGenerations(workingDir)
+    numGenerations, loadcase = checkGenerations(workingDir)
     for i in range(1, numGenerations+1):
-        if master.Analysis.Content.find("Netgen") > 0:
-            FRDPath = workingDir + f"/Gen{i}/FEMMeshNetgen.frd"
-        elif master.Analysis.Content.find("Gmsh") > 0:
-            FRDPath = workingDir + f"/Gen{i}/FEMMeshGmsh.frd"
-        if os.path.isfile(FRDPath):
-            try:
-                # This returns an exception if analysis failed for this .frd file, because there is no results data
-                FRDParser.FRDParser(FRDPath)
-            except:
-                status = "Failed"
-            else:
-                status = "Analysed"
-                numAnalysed += 1
+        # Checking the loadcases in generated file
+        lc=0
+        for obj in master.Objects:
+            if obj.TypeId=="Fem::FemAnalysis":   #to choose analysis objects
+                lc+=1
+                analysisfolder=os.path.join(workingDir + f"/Gen{i}/loadCase{lc}/")
+                try:
+                    # This returns an exception if analysis failed for this .frd file, because there is no results data
+                    FRDPath = glob.glob(analysisfolder + "*.frd")[0]
+                    try:
+                          FRDParser.FRDParser(FRDPath)
+                    except:
+                        status = "Failed"
+                except:
+                    status = "Not analysed"
+                else:
+                    status = "Analysed"
+                    numAnalysed += 1
+                try:
+                    statuses.append(status)
+                except:
+                    FreeCAD.Console.PrintError("Analysis not found.")
 
-        else:
-            status = "Not analysed"
-        statuses.append(status)
-
-    return (statuses, numAnalysed)
+    return (statuses, numAnalysed, lc)
 
 
 def checkAnalyses(master):
@@ -84,7 +93,7 @@ def hsvToRgb(h, s, v):
         return v, p, q
 
 
-def showGen(doc, item):
+def showGen(item):
     global old
     old = FreeCAD.ActiveDocument.Name
     if old[:3] == "Gen":
@@ -93,7 +102,7 @@ def showGen(doc, item):
         return
     index = item.row()+1
     # Open the generation
-    workingDir = '/'.join(doc.FileName.split('/')[0:-1])
+    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
     docPath = workingDir + \
         f"/Gen{index}/Gen{index}.FCStd"
     docName = f"Gen{index}"
@@ -119,12 +128,12 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
                 [defaultColour for x in range(width)] for y in range(height)]
         else:
             self.colours = colours[:]
-
-        # Insert generation number column into table
-        self.header.insert(0, "Gen")
-        for i in range(1, height+1):
-            self.itemList[i-1].insert(0, i)
-            self.colours[i-1].insert(0, defaultColour)
+        print(self.itemList)
+        # # Insert generation number column into table
+        # self.header.insert(0, "Gen")
+        # for i in range(1, height+1):
+        #     self.itemList[i-1].insert(0, i)
+        #     self.colours[i-1].insert(0, defaultColour)
 
     def updateColours(self, colours):
         for i, row in enumerate(colours):

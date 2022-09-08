@@ -6,6 +6,7 @@ import os
 import PySide
 import glob
 from femtools import ccxtools
+import numpy as np
 
 def makeFEA():
     try:
@@ -24,6 +25,8 @@ class FEA:
     """ Finite Element Analysis """
 
     def __init__(self, obj):
+ 
+ 
         obj.Proxy = self
         self.Type = "FEA"
         self.initProperties(obj)
@@ -34,6 +37,8 @@ class FEA:
                             "Analysis Status")
             obj.addProperty("App::PropertyInteger", "NumberofAnalysis", "Base",
                             "Number of Analysis")
+            obj.addProperty("App::PropertyInteger", "NumberOfLoadCase", "Base",
+                            "Number of Load Cases")
         except:
             pass
 
@@ -42,7 +47,7 @@ class FEACommand():
     """Perform FEA on generated parts"""
 
     def GetResources(self):
-        return {'Pixmap': FreeCAD.getUserAppDataDir() +'Mod/fembygen/FEA.svg',  # the name of a svg file available in the resources
+        return {'Pixmap': os.path.join(FreeCAD.getUserAppDataDir() +'Mod/FEMbyGEN/fembygen/FEA.svg'),  # the name of a svg file available in the resources
                 'Accel': "Shift+A",  # a default shortcut (optional)
                 'MenuText': "FEA Generations",
                 'ToolTip': "Perform FEA on generated parts"}
@@ -74,8 +79,8 @@ class FEAPanel:
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
             object.Object.Document.FileName.split('/')[0:-1])
-        self.numGenerations = Common.checkGenerations(self.workingDir)
-        stats, numAnalysed = Common.searchAnalysed(self.doc)
+        self.numGenerations, loadcase = Common.checkGenerations(self.workingDir)
+        stats, numAnalysed, LoadCase = Common.searchAnalysed(self.doc)
 
         # Update status labels and table
         self.form.genCountLabel.setText(
@@ -90,21 +95,21 @@ class FEAPanel:
 
     def deleteGenerations(self):
         FreeCAD.Console.PrintMessage("Deleting...")
-        numGens = Common.checkGenerations(self.workingDir)
+        numGens, loadcase = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
-            fileName = self.workingDir + f"/Gen{i}/"
-            files = os.listdir(fileName)
-            for j in files:
-                if j[-6:] == "backup":
-                    pass
-                else:
-                    os.remove(self.workingDir+f"/Gen{i}/"+j)
-                    FreeCAD.Console.PrintMessage(f"Gen{i} analysis files deleted")
-            shutil.copyfile(
-                self.workingDir+f"/Gen{i}/Gen{i}.FCStd.backup", self.workingDir+f"/Gen{i}/Gen{i}.FCStd")
+            lcases= glob.glob(self.workingDir + f"/Gen{i}/loadCase*")
+            for j in lcases:
+                try:
+                    shutil.rmtree(j)
+                    FreeCAD.Console.PrintMessage(f"{j} deleted\n")
+
+                except FileNotFoundError:
+                    FreeCAD.Console.PrintError(f"INFO: Generation {j} analysis data not found")
+
         doc = self.doc
         doc.FEA.Status = []
         doc.FEA.NumberofAnalysis = 0
+        doc.FEA.NumberOfLoadCase = 0
         self.updateAnalysisTable()
 
     def FEAGenerations(self):
@@ -117,12 +122,19 @@ class FEAPanel:
             FreeCAD.setActiveDocument(partName)
 
             # get the loadcases from the generation file
-            analysis=[]
-            for obj in FreeCAD.ActiveDocument.Objects:
-                if obj.TypeId=="Fem::FemAnalysis":   #to choose analysis objects
-                    FemGui.setActiveAnalysis(obj) 
-                   # Run FEA solver on generation
-                    self.performFEA(Gen_Doc, obj, i+1)
+            lc=0
+            for obj in Gen_Doc.Objects:
+                try:
+                    if obj.TypeId=="Fem::FemAnalysis":   #to choose analysis objects
+                        lc+=1
+                        FemGui.setActiveAnalysis(obj) 
+                        analysisfolder=os.path.join(self.workingDir + f"/Gen{i+1}/loadCase{lc}")
+                        os.mkdir(analysisfolder)
+                    # Run FEA solver on generation
+                        self.performFEA(Gen_Doc, obj, analysisfolder)
+                except:
+                    #It counts for deleted objects and gives error. 
+                    pass
 
             # Close generated part
             FreeCAD.closeDocument(partName)
@@ -131,9 +143,10 @@ class FEAPanel:
             progress = ((i+1)/self.numGenerations) * 100
             self.form.progressBar.setValue(progress)
 
-        (statuses, numAnalysed) = Common.searchAnalysed(self.doc)
+        (statuses, numAnalysed, numLoadCase) = Common.searchAnalysed(self.doc)
         self.doc.FEA.Status = statuses
         self.doc.FEA.NumberofAnalysis = numAnalysed
+        self.doc.FEA.NumberOfLoadCase =numLoadCase
         FreeCAD.setActiveDocument(self.doc.Name)
         self.doc.save()
         self.updateAnalysisTable()
@@ -142,11 +155,20 @@ class FEAPanel:
         # Make a header and table with one more column, because otherwise the table object will split each character
         # into its own cell
         stats, numAnalysed = Common.checkAnalyses(self.doc)
-        header = ["Status"]
+        loadcases=self.doc.FEA.NumberOfLoadCase
+        if loadcases!=0:
+            status_reshape=np.reshape(stats,(len(stats)//loadcases,loadcases))
+        header = ["Gen","Status"]
         table = []
 
-        for i in range(len(stats)):
-            table.append([stats[i]])
+        try:
+            for i in range(len(stats)//loadcases):
+                for j in range(loadcases):
+                    table.append([f" <b>{i+1} </b>.{j+1}"]+[status_reshape[i,j]])
+
+        except:
+            #No analysis exist yet
+            pass
 
         colours = []
         for status in stats:
@@ -161,14 +183,28 @@ class FEAPanel:
             elif status == "Failed":
                 # red/pink
                 colour = PySide.QtGui.QColor(250, 100, 100, 255)
-            colours.append([colour, white])
+            colours.append([white, colour])
 
         tableModel = Common.GenTableModel(
             self.form, table, header, colours=colours)
         tableModel.layoutChanged.emit()
         self.form.tableView.setModel(tableModel)
-        self.form.tableView.clicked.connect(Common.showGen)
-
+        self.form.tableView.clicked.connect(self.showGen)
+    def showGen(self,item):
+        global old
+        old = FreeCAD.ActiveDocument.Name
+        if old[:3] == "Gen":
+            FreeCAD.closeDocument(old)
+        if item=="close":
+            return
+        index = item.row()//self.doc.FEA.NumberOfLoadCase+1
+        # Open the generation
+        workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        docPath = workingDir + \
+            f"/Gen{index}/Gen{index}.FCStd"
+        docName = f"Gen{index}"
+        FreeCAD.open(docPath)
+        FreeCAD.setActiveDocument(docName)
     def outputs(self, directory):
         """ It modifies the inp file to get extra outputs
         such as elemnt volumes and elements internal energies"""
@@ -184,20 +220,20 @@ class FEAPanel:
         with open(name[0],"w") as new:
             new.write(newText)
 
-    def performFEA(self, doc, Analysis, GenerationNumber):
+    def performFEA(self, doc, Analysis, Directory):
         doc.recompute()
         # run the analysis step by step
         
-        fea = ccxtools.FemToolsCcx(analysis=Analysis, solver=doc.SolverCcxTools)
-        analysisDir=self.workingDir+f"/Gen{GenerationNumber}"
-        fea.setup_working_dir(analysisDir)
+        fea = ccxtools.FemToolsCcx(analysis=Analysis)#, solver=doc.SolverCcxTools)
+        # analysisDir=self.workingDir+f"/Gen{GenerationNumber}"
+        fea.setup_working_dir(Directory)
         fea.update_objects()
         fea.setup_ccx()
         message = fea.check_prerequisites()
         if not message:
             fea.purge_results()
             fea.write_inp_file()
-            self.outputs(analysisDir) #to get extra information at result file
+            self.outputs(Directory) #to get extra information at result file
             fea.ccx_run()
             fea.load_results()
         else:
@@ -226,7 +262,7 @@ class ViewProviderFEA:
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path = 'fembygen/FEA.svg'
+        icon_path = os.path.join(FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/FEA.svg')
         return icon_path
 
     def attach(self, vobj):

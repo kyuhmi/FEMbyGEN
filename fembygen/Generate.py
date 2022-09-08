@@ -46,7 +46,7 @@ class GenerateCommand():
     """Produce part generations"""
 
     def GetResources(self):
-        return {'Pixmap': FreeCAD.getUserAppDataDir() +'Mod/fembygen/Generate.svg',  # the name of a svg file available in the resources
+        return {'Pixmap': os.path.join(FreeCAD.getUserAppDataDir() +'Mod/FEMbyGEN/fembygen/Generate.svg'),  # the name of a svg file available in the resources
                 'Accel': "Shift+G",  # a default shortcut (optional)
                 'MenuText': "Generate",
                 'ToolTip': "Produce part generations"}
@@ -86,7 +86,7 @@ class GeneratePanel():
         self.doc.Generate.Generated_Parameters = parameterValues
         # Check if any generations have been made already, and up to what number
 
-        numGens = Common.checkGenerations(self.workingDir)
+        numGens, _ = Common.checkGenerations(self.workingDir)
         self.resetViewControls(numGens)
 
         self.form.numGensLabel.setText(f"{numGens} generations produced")
@@ -103,15 +103,15 @@ class GeneratePanel():
             lambda: self.previousG(numGens))
         self.updateParametersTable()
 
-    def meshing(self, doc):
+    def meshing(self, mesh, type):
         # Remeshing new generation
-        if doc.Analysis.Content.find("Netgen") > 0:
-            mesh = doc.FEMMeshNetgen
+        if type=="Netgen":
+            print("oo")
             mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
             mesh.recompute()
-        elif doc.Analysis.Content.find("Gmsh") > 0:
+        elif type=="Gmsh":
+            print("ooo")
             from femmesh.gmshtools import GmshTools as gt
-            mesh = doc.FEMMeshGmsh
             mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
             gmsh_mesh = gt(mesh)
             gmsh_mesh.create_mesh()
@@ -132,8 +132,8 @@ class GeneratePanel():
                 if l.Name == "Parameters" or l.Name == "Generate":
                     pass
                 elif l.Name=="Results":
-                    for m in master.Results:
-                        master.removeObject(m.name)
+                    for m in master.Results.Group:
+                        master.removeObject(m.Name)
                 else:
                     master.removeObject(l.Name)
 
@@ -196,8 +196,7 @@ class GeneratePanel():
                     f'C{k+2}', f'{numgenerations[i][k]}')
                 doc.Parameters.clear(f'D1:D{k+2}')
                 doc.Parameters.clear(f'E1:E{k+2}')
-            # define analysis working directory
-            doc.SolverCcxTools.WorkingDir=directory
+
             # Removing generative design container in the file
             for l in doc.Generative_Design.Group:
                 if l.Name == "Parameters":
@@ -205,9 +204,21 @@ class GeneratePanel():
                 else:
                     doc.removeObject(l.Name)
             doc.removeObject(doc.Generative_Design.Name)
-            doc.recompute()
+            doc.recompute() 
+            # define analysis working directory
+            lc=0
+            for obj in doc.Objects:
+                if obj.TypeId=='Fem::FemSolverObjectPython':   #to choose analysis objects
+                    lc+=1
+                    obj.WorkingDir=os.path.join(directory+f"loadCase{lc}")
 
-            self.meshing(doc)
+                if obj.TypeId == 'Fem::FemMeshObjectPython':
+                    self.meshing(obj, "Gmsh")
+                elif obj.TypeId=='Fem::FemMeshShapeNetgenObject':
+                    self.meshing(obj, "Netgen")
+
+            
+            doc.recompute()
             doc.save()
             FreeCAD.closeDocument(filename[:-6])
             # Update progress bar
@@ -221,16 +232,17 @@ class GeneratePanel():
         self.updateParametersTable()
 
         # Update number of generations produced in window
-        numGens = Common.checkGenerations(self.workingDir)
+        numGens, _ = Common.checkGenerations(self.workingDir)
         self.form.numGensLabel.setText(str(numGens) + " generations produced")
         self.form.readyLabel.setText("Finished")
         self.resetViewControls(numGens)
         self.updateParametersTable()
+        self.doc.save()  # too store generated values in generate object
         FreeCAD.Console.PrintMessage("Generation done successfully!")
 
     def deleteGenerations(self):
         FreeCAD.Console.PrintMessage("Deleting...\n")
-        numGens = Common.checkGenerations(self.workingDir)
+        numGens, _ = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
             # Delete analysis directories
             try:
@@ -248,13 +260,6 @@ class GeneratePanel():
         self.resetViewControls(numGens)
         self.updateParametersTable()
 
-    # def checkGenerations(self):
-    #     numGens = 1
-    #     while os.path.isdir(self.workingDir + "/Gen" + str(numGens)):
-    #         numGens += 1
-    #     self.resetViewControls(numGens-1)
-
-    #     return numGens-1
 
     def nextG(self, numGens):
         index = self.form.selectGenBox.currentIndex()
@@ -310,8 +315,15 @@ class GeneratePanel():
 
     def updateParametersTable(self):
         paramNames, parameterValues = Common.checkGenParameters(self.doc)
+                # Insert generation number column into table
+        
+        paramNames.insert(0, "Gen")
+        table=[]
+        for i in range(1, len(parameterValues)+1):
+            table.append([i]+list(parameterValues[i-1]))
+
         tableModel = Common.GenTableModel(
-            self.form, parameterValues, paramNames)
+            self.form, table, paramNames)
         tableModel.layoutChanged.emit()
         self.form.parametersTable.setModel(tableModel)
         self.form.parametersTable.clicked.connect(Common.showGen)
@@ -333,7 +345,7 @@ class ViewProviderGen:
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path = 'fembygen/Generate.svg'
+        icon_path = os.path.join(FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/Generate.svg')
         return icon_path
 
     def attach(self, vobj):
