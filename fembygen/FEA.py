@@ -33,7 +33,7 @@ class FEA:
 
     def initProperties(self, obj):
         try:
-            obj.addProperty("App::PropertyStringList", "Status", "Base",
+            obj.addProperty("App::PropertyPythonObject", "Status", "Base",
                             "Analysis Status")
             obj.addProperty("App::PropertyInteger", "NumberofAnalysis", "Base",
                             "Number of Analysis")
@@ -79,8 +79,8 @@ class FEAPanel:
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
             object.Object.Document.FileName.split('/')[0:-1])
-        self.numGenerations, loadcase = Common.checkGenerations(self.workingDir)
-        stats, numAnalysed, LoadCase = Common.searchAnalysed(self.doc)
+        self.numGenerations = Common.checkGenerations(self.workingDir)
+        _, numAnalysed, _ = Common.searchAnalysed(self.doc)
 
         # Update status labels and table
         self.form.genCountLabel.setText(
@@ -93,9 +93,10 @@ class FEAPanel:
         self.form.startFEAButton.clicked.connect(self.FEAGenerations)
         self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
 
+
     def deleteGenerations(self):
         FreeCAD.Console.PrintMessage("Deleting...")
-        numGens, loadcase = Common.checkGenerations(self.workingDir)
+        numGens = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
             lcases= glob.glob(self.workingDir + f"/Gen{i}/loadCase*")
             for j in lcases:
@@ -155,56 +156,43 @@ class FEAPanel:
         # Make a header and table with one more column, because otherwise the table object will split each character
         # into its own cell
         stats, numAnalysed = Common.checkAnalyses(self.doc)
-        loadcases=self.doc.FEA.NumberOfLoadCase
-        if loadcases!=0:
-            status_reshape=np.reshape(stats,(len(stats)//loadcases,loadcases))
-        header = ["Gen","Status"]
-        table = []
-
+        header = ["Gen"]
         try:
-            for i in range(len(stats)//loadcases):
-                for j in range(loadcases):
-                    table.append([f" <b>{i+1} </b>.{j+1}"]+[status_reshape[i,j]])
+            gen, lc = len(stats), len(stats[0])
+            for i in range(lc):
+                header.append(f"LoadCase {i+1}")
+            
+            index=np.array(range(1,gen+1))[...,None]
+            table=np.hstack((index,stats))
 
+            colours = np.empty((gen,lc+1),dtype=np.dtype("object"))
+    
+            for i, row in enumerate(stats):
+                for j, value in enumerate(row):
+                    white = PySide.QtGui.QColor("white")
+                    colours[i,0] = white
+                    if value == "Analysed":
+                        # green
+                        colours[i,j+1] = PySide.QtGui.QColor(114, 242, 73, 255)
+                    elif value == "Not analysed":
+                        # yellow
+                        colours[i,j+1] = PySide.QtGui.QColor(207, 184, 12, 255)
+                    elif value == "Failed":
+                        # red/pink
+                        colours[i,j+1] = PySide.QtGui.QColor(250, 100, 100, 255)
+            table=table.tolist()
+            colours=colours.tolist()
         except:
-            #No analysis exist yet
-            pass
-
-        colours = []
-        for status in stats:
-            white = PySide.QtGui.QColor("white")
-            colour = white
-            if status == "Analysed":
-                # green
-                colour = PySide.QtGui.QColor(114, 242, 73, 255)
-            elif status == "Not analysed":
-                # yellow
-                colour = PySide.QtGui.QColor(207, 184, 12, 255)
-            elif status == "Failed":
-                # red/pink
-                colour = PySide.QtGui.QColor(250, 100, 100, 255)
-            colours.append([white, colour])
-
+            table=[]
+            colours=[]
         tableModel = Common.GenTableModel(
             self.form, table, header, colours=colours)
         tableModel.layoutChanged.emit()
         self.form.tableView.setModel(tableModel)
-        self.form.tableView.clicked.connect(self.showGen)
-    def showGen(self,item):
-        global old
-        old = FreeCAD.ActiveDocument.Name
-        if old[:3] == "Gen":
-            FreeCAD.closeDocument(old)
-        if item=="close":
-            return
-        index = item.row()//self.doc.FEA.NumberOfLoadCase+1
-        # Open the generation
-        workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
-        docPath = workingDir + \
-            f"/Gen{index}/Gen{index}.FCStd"
-        docName = f"Gen{index}"
-        FreeCAD.open(docPath)
-        FreeCAD.setActiveDocument(docName)
+        self.form.tableView.clicked.connect(Common.showGen)
+        self.form.tableView.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
+        
+
     def outputs(self, directory):
         """ It modifies the inp file to get extra outputs
         such as elemnt volumes and elements internal energies"""

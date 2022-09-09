@@ -13,21 +13,18 @@ def checkGenerations(workingDir):
     # workingDir = '/'.join(master.FileName.split('/')[0:-1])
     while os.path.isdir(workingDir + "/Gen" + str(numGens)):
         numGens += 1
-
-    while os.path.isdir(workingDir + "/Gen1/loadCase" + str(loadCase)):
-        loadCase += 1
-
-    return numGens-1, loadCase-1
+    return numGens-1
 
 
 def searchAnalysed(master):
     numAnalysed = 0
     statuses = []
     workingDir = '/'.join(master.FileName.split('/')[0:-1])
-    numGenerations, loadcase = checkGenerations(workingDir)
+    numGenerations = checkGenerations(workingDir)
     for i in range(1, numGenerations+1):
         # Checking the loadcases in generated file
         lc=0
+        lcStatus=[]
         for obj in master.Objects:
             if obj.TypeId=="Fem::FemAnalysis":   #to choose analysis objects
                 lc+=1
@@ -45,10 +42,10 @@ def searchAnalysed(master):
                     status = "Analysed"
                     numAnalysed += 1
                 try:
-                    statuses.append(status)
+                    lcStatus.append(status)
                 except:
                     FreeCAD.Console.PrintError("Analysis not found.")
-
+        statuses.append(lcStatus)
     return (statuses, numAnalysed, lc)
 
 
@@ -128,12 +125,7 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
                 [defaultColour for x in range(width)] for y in range(height)]
         else:
             self.colours = colours[:]
-        print(self.itemList)
-        # # Insert generation number column into table
-        # self.header.insert(0, "Gen")
-        # for i in range(1, height+1):
-        #     self.itemList[i-1].insert(0, i)
-        #     self.colours[i-1].insert(0, defaultColour)
+        # print(self.itemList)
 
     def updateColours(self, colours):
         for i, row in enumerate(colours):

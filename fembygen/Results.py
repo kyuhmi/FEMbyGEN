@@ -69,16 +69,16 @@ class ResultsPanel:
         self.form = FreeCADGui.PySideUic.loadUi(guiPath)
         self.workingDir = '/'.join(
             object.Object.Document.FileName.split('/')[0:-1])
-        self.numGenerationsi, loadcase = Common.checkGenerations(self.workingDir)
+        self.numGenerationsi = Common.checkGenerations(self.workingDir)
         self.obj = object
 
-        master = object.Object.Document
-        if master.Results.FEAMetrics == []:
+        self.doc= object.Object.Document
+        if self.doc.Results.FEAMetrics == []:
             FreeCAD.Console.PrintMessage("Calculating metrics...")
-            self.calcAndSaveFEAMetrics(master)
+            self.calcAndSaveFEAMetrics()
             FreeCAD.open(object.Object.Document.FileName)
         # Load metrics from file
-        table = master.Results.FEAMetrics
+        table = self.doc.Results.FEAMetrics
 
         # Split into header and table data, then update table
         self.metricNames = table[0]
@@ -88,18 +88,47 @@ class ResultsPanel:
         self.addConfigControls()
 
         self.updateResultsTable()
-        # master.save()
+        # self.doc.save()
 
     def updateResultsTable(self):
         header = self.metricNames
         items = self.metrics
+        stats, numAnalysed = Common.checkAnalyses(self.doc)
+        gen, lc= len(stats), len(stats[0])
+        index=[]
+        for i in range(gen):
+            for j in range(lc):
+                index.append([f"{i+1}.{j+1}"])
+        print(index)
+        print(len(index))
+        table=np.hstack((index,items))
+        table=table.tolist()
+        header=["Gen"]+header
 
         colours = self.generateColourScalesFromMetrics()
         self.tableModel = Common.GenTableModel(
-            self.form, items, header, colours)
+            self.form, table, header, colours)
         self.form.resultsTable.setModel(self.tableModel)
         self.form.resultsTable.resizeColumnsToContents()
-        self.form.resultsTable.clicked.connect(Common.showGen)
+        self.form.resultsTable.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
+
+        self.form.resultsTable.clicked.connect(self.showGen)
+
+    def showGen(self,item):
+        global old
+        old = FreeCAD.ActiveDocument.Name
+        if old[:3] == "Gen":
+            FreeCAD.closeDocument(old)
+        if item=="close":
+            return
+        index = item.row()//self.doc.FEA.NumberOfLoadCase+1
+        # Open the generation
+        workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+        docPath = workingDir + \
+            f"/Gen{index}/Gen{index}.FCStd"
+        docName = f"Gen{index}"
+        FreeCAD.open(docPath)
+        FreeCAD.setActiveDocument(docName)
 
     def addConfigControls(self):
         self.configControls = []
@@ -223,55 +252,51 @@ class ResultsPanel:
 
         return colours
 
-    def calcAndSaveFEAMetrics(self,master):
-        workingDir = '/'.join(master.FileName.split('/')[0:-1])
-        numGenerations, loadcase = Common.checkGenerations(workingDir)
+    def calcAndSaveFEAMetrics(self):
+        workingDir = '/'.join(self.doc.FileName.split('/')[0:-1])
+        numGenerations = Common.checkGenerations(workingDir)
         if numGenerations > 0:
             table = [["Volume[mm^3]", "Internal Energy[Joule]", "Standard Dev. of En. Den","Mean Stress[MPa]", "Max Stress[MPa]", "Max Disp[mm]"]]
 
-            result = self.calculateFEAMetric(master)
+            result = self.calculateFEAMetric()
             table += result
-            print("Table of results: ")
-            print(table) 
-            master.Results.FEAMetrics = table
+            self.doc.Results.FEAMetrics = table
 
-    def calculateFEAMetric(self,master):
-        workingDir = '/'.join(master.FileName.split('/')[0:-1])
-        statuses,numgAnly,lc = Common.searchAnalysed(master)
+    def calculateFEAMetric(self):
+        workingDir = '/'.join(self.doc.FileName.split('/')[0:-1])
+        statuses,numgAnly,lc = Common.searchAnalysed(self.doc)
         result=[]
-        for i, j in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
-            filename = f"Gen{i+1}"
-            filePath = workingDir + f"/Gen{i+1}/" + filename+".FCStd"
-            resultPath= workingDir + f"/Gen{i+1}/" 
-            doc = FreeCAD.open(filePath, hidden=True)
-            mean=np.mean(doc.CCX_Results.vonMises)
-            max=np.max(doc.CCX_Results.vonMises)
-            maxDisp=np.max(doc.CCX_Results.DisplacementLengths)
-            # Energy=np.max()    #TODO calculate the energy of the deformation
+        for i, row in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
+            for j, value in enumerate(row):
+                filename = f"Gen{i+1}"
+                filePath = workingDir + f"/Gen{i+1}/{filename}.FCStd"
+                resultPath= workingDir + f"/Gen{i+1}/loadCase{j+1}/" 
+                doc = FreeCAD.open(filePath, hidden=True)
+                mean=np.mean(doc.CCX_Results.vonMises)
+                max=np.max(doc.CCX_Results.vonMises)
+                maxDisp=np.max(doc.CCX_Results.DisplacementLengths)
 
-            intData, totalInt, volData, totalVol, denData =self.IntEnergyandVolume(resultPath)
-            # energyDensity= intData[:,1]/volData[:,1] #checked for ELSE results and ENER results of calculix outputs
-            energyDenStd=np.std(denData)
+                intData, totalInt, volData, totalVol, denData =self.IntEnergyandVolume(resultPath)
+                energyDenStd=np.std(denData)
 
-            result.append([f"{totalVol:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}", f"{mean:.2e}",
-                            f"{max:.2e}",f"{maxDisp:.2e}"])
-            doc.CCX_Results.Label=f"Gen{i+1}_Results"
-            doc.ResultMesh.Label=f"Gen{i+1}_Mesh"
-            master.copyObject(doc.CCX_Results, False)
-            master.copyObject(doc.ResultMesh, False)
-            FreeCAD.closeDocument(filename)
+                result.append([f"{totalVol:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}", f"{mean:.2e}",
+                                f"{max:.2e}",f"{maxDisp:.2e}"])
+                doc.CCX_Results.Label=f"Gen{i+1}_Results"
+                doc.ResultMesh.Label=f"Gen{i+1}_Mesh"
+                self.doc.copyObject(doc.CCX_Results, False)
+                self.doc.copyObject(doc.ResultMesh, False)
+                FreeCAD.closeDocument(filename)
 
-            master.getObjectsByLabel(f"Gen{i+1}_Results")[0].Mesh=master.getObjectsByLabel(f"Gen{i+1}_Mesh")[0]
-            master.Results.addObject(master.getObjectsByLabel(f"Gen{i+1}_Results")[0])
-            master.getObjectsByLabel(f"Gen{i+1}_Results")[0].Visibility=False
-            master.getObjectsByLabel(f"Gen{i+1}_Mesh")[0].Visibility=False
+                self.doc.getObjectsByLabel(f"Gen{i+1}_Results")[0].Mesh=self.doc.getObjectsByLabel(f"Gen{i+1}_Mesh")[0]
+                self.doc.Results.addObject(self.doc.getObjectsByLabel(f"Gen{i+1}_Results")[0])
+                self.doc.getObjectsByLabel(f"Gen{i+1}_Results")[0].Visibility=False
+                self.doc.getObjectsByLabel(f"Gen{i+1}_Mesh")[0].Visibility=False
         
         return result
 
     def IntEnergyandVolume(self,resultPath):
         """to get volume information and internal energy information from dat file"""
         name= glob.glob(resultPath + "*.dat")
-        print(name)
         with open(name[0],"r") as datfile:
             text=datfile.read()
             
@@ -310,12 +335,12 @@ class ResultsPanel:
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
-        Common.showGen("close") #closes the gen file If a generated file opened to check before
+        self.showGen("close") #closes the gen file If a generated file opened to check before
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
-        Common.showGen("close") #closes the gen file If a generated file opened to check before
+        self.showGen("close") #closes the gen file If a generated file opened to check before
 
 
 class ViewProviderResult:

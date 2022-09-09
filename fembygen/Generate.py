@@ -86,7 +86,7 @@ class GeneratePanel():
         self.doc.Generate.Generated_Parameters = parameterValues
         # Check if any generations have been made already, and up to what number
 
-        numGens, _ = Common.checkGenerations(self.workingDir)
+        numGens = Common.checkGenerations(self.workingDir)
         self.resetViewControls(numGens)
 
         self.form.numGensLabel.setText(f"{numGens} generations produced")
@@ -106,11 +106,9 @@ class GeneratePanel():
     def meshing(self, mesh, type):
         # Remeshing new generation
         if type=="Netgen":
-            print("oo")
             mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
             mesh.recompute()
         elif type=="Gmsh":
-            print("ooo")
             from femmesh.gmshtools import GmshTools as gt
             mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
             gmsh_mesh = gt(mesh)
@@ -232,7 +230,7 @@ class GeneratePanel():
         self.updateParametersTable()
 
         # Update number of generations produced in window
-        numGens, _ = Common.checkGenerations(self.workingDir)
+        numGens= Common.checkGenerations(self.workingDir)
         self.form.numGensLabel.setText(str(numGens) + " generations produced")
         self.form.readyLabel.setText("Finished")
         self.resetViewControls(numGens)
@@ -242,7 +240,7 @@ class GeneratePanel():
 
     def deleteGenerations(self):
         FreeCAD.Console.PrintMessage("Deleting...\n")
-        numGens, _ = Common.checkGenerations(self.workingDir)
+        numGens = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
             # Delete analysis directories
             try:
@@ -326,6 +324,7 @@ class GeneratePanel():
             self.form, table, paramNames)
         tableModel.layoutChanged.emit()
         self.form.parametersTable.setModel(tableModel)
+        self.form.parametersTable.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
         self.form.parametersTable.clicked.connect(Common.showGen)
 
     def accept(self):
