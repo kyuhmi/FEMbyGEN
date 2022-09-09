@@ -267,9 +267,9 @@ class ResultsPanel:
         statuses,numgAnly,lc = Common.searchAnalysed(self.doc)
         result=[]
         for i, row in enumerate(statuses):   #TODO only for status is anlyzed other cases it will be none
+            filename = f"Gen{i+1}"
+            filePath = workingDir + f"/Gen{i+1}/{filename}.FCStd"
             for j, value in enumerate(row):
-                filename = f"Gen{i+1}"
-                filePath = workingDir + f"/Gen{i+1}/{filename}.FCStd"
                 resultPath= workingDir + f"/Gen{i+1}/loadCase{j+1}/" 
                 doc = FreeCAD.open(filePath, hidden=True)
                 mean=np.mean(doc.CCX_Results.vonMises)
@@ -281,18 +281,20 @@ class ResultsPanel:
 
                 result.append([f"{totalVol:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}", f"{mean:.2e}",
                                 f"{max:.2e}",f"{maxDisp:.2e}"])
-                doc.CCX_Results.Label=f"Gen{i+1}_Results"
-                doc.ResultMesh.Label=f"Gen{i+1}_Mesh"
+
+            self.getResultsToMaster(doc, i+1, j+1)
+            FreeCAD.closeDocument(filename)
+        return result
+
+    def getResultsToMaster(self,doc, GenNo, loadNo):
+                doc.CCX_Results.Label=f"Gen{GenNo}_Results"
+                doc.ResultMesh.Label=f"Gen{GenNo}_Mesh"
                 self.doc.copyObject(doc.CCX_Results, False)
                 self.doc.copyObject(doc.ResultMesh, False)
-                FreeCAD.closeDocument(filename)
-
-                self.doc.getObjectsByLabel(f"Gen{i+1}_Results")[0].Mesh=self.doc.getObjectsByLabel(f"Gen{i+1}_Mesh")[0]
-                self.doc.Results.addObject(self.doc.getObjectsByLabel(f"Gen{i+1}_Results")[0])
-                self.doc.getObjectsByLabel(f"Gen{i+1}_Results")[0].Visibility=False
-                self.doc.getObjectsByLabel(f"Gen{i+1}_Mesh")[0].Visibility=False
-        
-        return result
+                self.doc.getObjectsByLabel(f"Gen{GenNo}_Results")[0].Mesh=self.doc.getObjectsByLabel(f"Gen{GenNo}_Mesh")[0]
+                self.doc.Results.addObject(self.doc.getObjectsByLabel(f"Gen{GenNo}_Results")[0])
+                self.doc.getObjectsByLabel(f"Gen{GenNo}_Results")[0].Visibility=False
+                self.doc.getObjectsByLabel(f"Gen{GenNo}_Mesh")[0].Visibility=False
 
     def IntEnergyandVolume(self,resultPath):
         """to get volume information and internal energy information from dat file"""

@@ -114,6 +114,26 @@ class GeneratePanel():
             gmsh_mesh = gt(mesh)
             gmsh_mesh.create_mesh()
 
+    def purge_results(self):
+        from femtools.femutils import is_of_type
+        analysis=self.doc.Results
+        for m in analysis.Group:
+            if m.isDerivedFrom("Fem::FemResultObject"):
+                if m.Mesh and is_of_type(m.Mesh, "Fem::MeshResult"):
+                    analysis.Document.removeObject(m.Mesh.Name)
+                analysis.Document.removeObject(m.Name)
+        analysis.Document.recompute()
+        # result mesh
+        for m in analysis.Group:
+            if is_of_type(m, "Fem::MeshResult"):
+                analysis.Document.removeObject(m.Name)
+        analysis.Document.recompute()
+        # dat text object
+        for m in analysis.Group:
+            if is_of_type(m, "App::TextDocument") and m.Name.startswith("ccx_dat_file"):
+                analysis.Document.removeObject(m.Name)
+        analysis.Document.recompute()
+
     def generateParts(self):
         master=self.doc
         master.save()  # saving the prepared masterfile
@@ -130,8 +150,10 @@ class GeneratePanel():
                 if l.Name == "Parameters" or l.Name == "Generate":
                     pass
                 elif l.Name=="Results":
-                    for m in master.Results.Group:
-                        master.removeObject(m.Name)
+                    # for m in master.Results.Group:
+                    #     master.removeObject(m.Name)
+                    self.purge_results()
+                    master.removeObject("Results")
                 else:
                     master.removeObject(l.Name)
 
@@ -152,17 +174,7 @@ class GeneratePanel():
             numberofgen = int(master.Parameters.get(f'E{i+2}'))
             param.append(np.linspace(mins, maxs, numberofgen))
 
-        self.form.progressBar.setStyleSheet(
-                          "background-color: #74c8ff;"
-                          "color: #0a9dff;"
-                          "border-style: outset;"
-                          "border-width: 2px;"
-                          "border-color: #74c8ff;"
-                          "border-radius: 7px;"
-                          "text-align: left; }"
-
-                          "QProgressBar::chunk {"
-                          "background-color: #010327; }")
+        self.form.progressBar.setStyleSheet('QProgressBar {text-align: center; } QProgressBar::chunk {background-color: #009688;}')
         # Combination of all parameters
         numgenerations = list(itertools.product(*param))
         for i in range(len(numgenerations)):
@@ -173,9 +185,7 @@ class GeneratePanel():
                 FreeCAD.Console.PrintError(
                     f"Please delete earlier generations: Gen{i+1} already exist in the folder")
                 self.form.progressBar.setValue(100)
-                self.form.progressBar.setStyleSheet("{"
-                                                    "background-color: red;"
-                                                    "}")
+                self.form.progressBar.setStyleSheet("QProgressBar {text-align: center; } QProgressBar::chunk {background-color: #F44336;}")
                 self.form.readyLabel.setText("Delete earlier generations")
                 return
 
