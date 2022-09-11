@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>355</width>
-    <height>527</height>
+    <width>649</width>
+    <height>909</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,129 +15,316 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>Stress in MPa</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_2">
-     <property name="text">
-      <string>Displacement in mm</string>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QTableView" name="resultsTable">
+    <widget class="QTabWidget" name="tabWidget">
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>300</height>
+       <height>800</height>
       </size>
      </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>1000</height>
-      </size>
+     <property name="currentIndex">
+      <number>1</number>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="configGroup">
-     <property name="title">
-      <string>Configure results view</string>
-     </property>
-     <layout class="QGridLayout" name="configGrid">
-      <item row="0" column="1" colspan="2">
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Scale</string>
+     <widget class="QWidget" name="summary">
+      <attribute name="title">
+       <string>Summary</string>
+      </attribute>
+      <widget class="QLabel" name="label_2">
+       <property name="geometry">
+        <rect>
+         <x>1</x>
+         <y>15</y>
+         <width>585</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Following results are summation of all loadcases</string>
+       </property>
+      </widget>
+      <widget class="QTableView" name="resultsTable_sum">
+       <property name="geometry">
+        <rect>
+         <x>1</x>
+         <y>56</y>
+         <width>601</width>
+         <height>321</height>
+        </rect>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>350</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>Click the row to open file</string>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOn</enum>
+       </property>
+       <property name="horizontalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOn</enum>
+       </property>
+       <property name="sizeAdjustPolicy">
+        <enum>QAbstractScrollArea::AdjustToContents</enum>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_5">
+       <property name="geometry">
+        <rect>
+         <x>1</x>
+         <y>418</y>
+         <width>433</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Ranking weight of result [Total 100]</string>
+       </property>
+      </widget>
+      <widget class="QWidget" name="gridLayoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>2</x>
+         <y>460</y>
+         <width>349</width>
+         <height>317</height>
+        </rect>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2" rowstretch="1,1,0,0,0,0" columnstretch="1,1" rowminimumheight="2,2,0,0,0,0" columnminimumwidth="1,1">
+        <property name="spacing">
+         <number>3</number>
         </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="3" colspan="2">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Range</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Metric</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="4">
-       <widget class="QLabel" name="label_9">
-        <property name="text">
-         <string>Max</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="2">
-       <widget class="QLabel" name="label_7">
-        <property name="text">
-         <string>Gradient</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLabel" name="label_6">
-        <property name="text">
-         <string>Solid</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLabel" name="label_8">
-        <property name="text">
-         <string>Min</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="5" rowspan="2">
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-     </layout>
+        <item row="2" column="1">
+         <widget class="QPlainTextEdit" name="standarddeviation">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="plainText">
+           <string>50</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="internalenergyL">
+          <property name="text">
+           <string>Internal Energy</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QPlainTextEdit" name="volume">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="plainText">
+           <string>20</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QPlainTextEdit" name="maxstress">
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="plainText">
+           <string>10</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QPlainTextEdit" name="internalenergy">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="plainText">
+           <string>10</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QPlainTextEdit" name="meanstress">
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="plainText">
+           <string>0</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="standarddeviationL">
+          <property name="text">
+           <string>Std. Dev. of Int. Energ.</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="meanstressL">
+          <property name="text">
+           <string>Mean Stress</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QPlainTextEdit" name="maxdisplacement">
+          <property name="maximumSize">
+           <size>
+            <width>70</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="plainText">
+           <string>10</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="maxdisplacementL">
+          <property name="text">
+           <string>Max Displacement</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="maxstressL">
+          <property name="text">
+           <string>Max Stress</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="volumeL">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>200</width>
+            <height>50</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Volume</string>
+          </property>
+          <property name="buddy">
+           <cstring>volumeL</cstring>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QPushButton" name="pushButton">
+       <property name="geometry">
+        <rect>
+         <x>360</x>
+         <y>460</y>
+         <width>111</width>
+         <height>81</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Arrange</string>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="allresults">
+      <attribute name="title">
+       <string>All Results</string>
+      </attribute>
+      <widget class="QTableView" name="resultsTable_all">
+       <property name="geometry">
+        <rect>
+         <x>1</x>
+         <y>1</y>
+         <width>621</width>
+         <height>911</height>
+        </rect>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16777215</height>
+        </size>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_3">
+       <property name="geometry">
+        <rect>
+         <x>1</x>
+         <y>921</y>
+         <width>501</width>
+         <height>29</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>You can open the files by clicking the row</string>
+       </property>
+      </widget>
+     </widget>
     </widget>
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>volume</tabstop>
+  <tabstop>internalenergy</tabstop>
+  <tabstop>standarddeviation</tabstop>
+  <tabstop>meanstress</tabstop>
+  <tabstop>maxstress</tabstop>
+  <tabstop>maxdisplacement</tabstop>
+  <tabstop>pushButton</tabstop>
+  <tabstop>resultsTable_sum</tabstop>
+ </tabstops>
  <resources>
   <include location="redGreenIcon.qrc"/>
  </resources>
