@@ -8,6 +8,7 @@ import csv
 import numpy as np
 import itertools
 import PySide
+import functools
 
 
 def makeGenerate():
@@ -46,7 +47,7 @@ class GenerateCommand():
     """Produce part generations"""
 
     def GetResources(self):
-        return {'Pixmap': os.path.join(FreeCAD.getUserAppDataDir() +'Mod/FEMbyGEN/fembygen/Generate.svg'),  # the name of a svg file available in the resources
+        return {'Pixmap': os.path.join(FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/Generate.svg'),  # the name of a svg file available in the resources
                 'Accel': "Shift+G",  # a default shortcut (optional)
                 'MenuText': "Generate",
                 'ToolTip': "Produce part generations"}
@@ -105,10 +106,10 @@ class GeneratePanel():
 
     def meshing(self, mesh, type):
         # Remeshing new generation
-        if type=="Netgen":
+        if type == "Netgen":
             mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
             mesh.recompute()
-        elif type=="Gmsh":
+        elif type == "Gmsh":
             from femmesh.gmshtools import GmshTools as gt
             mesh.FemMesh = Fem.FemMesh()  # cleaning old meshes
             gmsh_mesh = gt(mesh)
@@ -116,7 +117,7 @@ class GeneratePanel():
 
     def purge_results(self):
         from femtools.femutils import is_of_type
-        analysis=self.doc.Results
+        analysis = self.doc.Results
         for m in analysis.Group:
             if m.isDerivedFrom("Fem::FemResultObject"):
                 if m.Mesh and is_of_type(m.Mesh, "Fem::MeshResult"):
@@ -135,7 +136,7 @@ class GeneratePanel():
         analysis.Document.recompute()
 
     def generateParts(self):
-        master=self.doc
+        master = self.doc
         master.save()  # saving the prepared masterfile
         docPath = master.FileName
 
@@ -144,18 +145,18 @@ class GeneratePanel():
         numberofgen = []
         self.detection = []
         self.inumber = []
-            
+
         # Delete if earlier generative objects exist
         for l in master.Generative_Design.Group:
-                if l.Name == "Parameters" or l.Name == "Generate":
-                    pass
-                elif l.Name=="Results":
-                    # for m in master.Results.Group:
-                    #     master.removeObject(m.Name)
-                    self.purge_results()
-                    master.removeObject("Results")
-                else:
-                    master.removeObject(l.Name)
+            if l.Name == "Parameters" or l.Name == "Generate":
+                pass
+            elif l.Name == "Results":
+                # for m in master.Results.Group:
+                #     master.removeObject(m.Name)
+                self.purge_results()
+                master.removeObject("Results")
+            else:
+                master.removeObject(l.Name)
 
         # Getting number of parameters
         try:
@@ -174,7 +175,8 @@ class GeneratePanel():
             numberofgen = int(master.Parameters.get(f'E{i+2}'))
             param.append(np.linspace(mins, maxs, numberofgen))
 
-        self.form.progressBar.setStyleSheet('QProgressBar {text-align: center; } QProgressBar::chunk {background-color: #009688;}')
+        self.form.progressBar.setStyleSheet(
+            'QProgressBar {text-align: center; } QProgressBar::chunk {background-color: #009688;}')
         # Combination of all parameters
         numgenerations = list(itertools.product(*param))
         for i in range(len(numgenerations)):
@@ -185,7 +187,8 @@ class GeneratePanel():
                 FreeCAD.Console.PrintError(
                     f"Please delete earlier generations: Gen{i+1} already exist in the folder")
                 self.form.progressBar.setValue(100)
-                self.form.progressBar.setStyleSheet("QProgressBar {text-align: center; } QProgressBar::chunk {background-color: #F44336;}")
+                self.form.progressBar.setStyleSheet(
+                    "QProgressBar {text-align: center; } QProgressBar::chunk {background-color: #F44336;}")
                 self.form.readyLabel.setText("Delete earlier generations")
                 return
 
@@ -212,20 +215,39 @@ class GeneratePanel():
                 else:
                     doc.removeObject(l.Name)
             doc.removeObject(doc.Generative_Design.Name)
-            doc.recompute() 
+            doc.recompute()
+
+            # getting first analysis meshing object and copy it other loadcases
+            for mesh in doc.Objects:
+                if mesh.TypeId == 'Fem::FemMeshObjectPython':
+                    self.meshing(mesh, "Gmsh")
+                    break
+                elif mesh.TypeId == 'Fem::FemMeshShapeNetgenObject':
+                    self.meshing(mesh, "Netgen")
+                    break
+
             # define analysis working directory
-            lc=0
+            lc = 0
             for obj in doc.Objects:
-                if obj.TypeId=='Fem::FemSolverObjectPython':   #to choose analysis objects
-                    lc+=1
-                    obj.WorkingDir=os.path.join(directory+f"loadCase{lc}")
+                try:
+                    if obj.TypeId == "Fem::FemAnalysis":  # to choose analysis objects
+                        lc += 1
+                        # copying first loadcase mesh to other loadcases
+                        if lc > 1:
+                            # delete old mesh of loadcase
+                            for old in obj.Group:
+                                if old.TypeId == 'Fem::FemMeshObjectPython' or old.TypeId == 'Fem::FemMeshShapeNetgenObject':
+                                    doc.removeObject(old.Name)
 
-                if obj.TypeId == 'Fem::FemMeshObjectPython':
-                    self.meshing(obj, "Gmsh")
-                elif obj.TypeId=='Fem::FemMeshShapeNetgenObject':
-                    self.meshing(obj, "Netgen")
+                                # setting working directory of loadcase to subfolder of generation folder
+                                elif old.TypeId == 'Fem::F emSolverObjectPython':
+                                    old.WorkingDir = os.path.join(directory+f"loadCase{lc}")
+                            # copying same mesh to other loadcases
+                            obj.addObject(doc.copyObject(mesh, False))
+                except:
+                    # after deleting mesh elements, for loop counts it again and it is not exist as object anymore
+                    pass
 
-            
             doc.recompute()
             doc.save()
             FreeCAD.closeDocument(filename[:-6])
@@ -240,12 +262,12 @@ class GeneratePanel():
         self.updateParametersTable()
 
         # Update number of generations produced in window
-        numGens= Common.checkGenerations(self.workingDir)
+        numGens = Common.checkGenerations(self.workingDir)
         self.form.numGensLabel.setText(str(numGens) + " generations produced")
         self.form.readyLabel.setText("Finished")
         self.resetViewControls(numGens)
         self.updateParametersTable()
-        self.doc.save()  # too store generated values in generate object
+        master.save()  # too store generated values in generate object
         FreeCAD.Console.PrintMessage("Generation done successfully!")
 
     def deleteGenerations(self):
@@ -258,16 +280,17 @@ class GeneratePanel():
                 FreeCAD.Console.PrintMessage(self.workingDir + f"/Gen{i}/ deleted\n")
             except FileNotFoundError:
                 FreeCAD.Console.PrintError("INFO: Generation " + str(i) +
-                      " analysis data not found")
+                                           " analysis data not found")
                 pass
             except:
                 FreeCAD.Console.PrintError(
                     "Error while trying to delete analysis folder for generation " + str(i))
 
         self.doc.Generate.Generated_Parameters = None
+
         self.resetViewControls(numGens)
         self.updateParametersTable()
-
+        FreeCAD.setActiveDocument(self.doc.Name)
 
     def nextG(self, numGens):
         index = self.form.selectGenBox.currentIndex()
@@ -323,10 +346,10 @@ class GeneratePanel():
 
     def updateParametersTable(self):
         paramNames, parameterValues = Common.checkGenParameters(self.doc)
-                # Insert generation number column into table
-        
+        # Insert generation number column into table
+
         paramNames.insert(0, "Gen")
-        table=[]
+        table = []
         for i in range(1, len(parameterValues)+1):
             table.append([i]+list(parameterValues[i-1]))
 
@@ -335,18 +358,21 @@ class GeneratePanel():
         tableModel.layoutChanged.emit()
         self.form.parametersTable.setModel(tableModel)
         self.form.parametersTable.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
-        self.form.parametersTable.clicked.connect(Common.showGen)
+        self.form.parametersTable.clicked.connect(functools.partial(
+            Common.showGen, self.form.parametersTable, self.doc))
+        self.form.parametersTable.setMinimumHeight(len(parameterValues)*40)
+        self.form.parametersTable.setMaximumHeight(len(parameterValues)*40)
 
     def accept(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
-        Common.showGen("close") #closes the gen file If a generated file opened to check before
+        Common.showGen("close", self.doc, None)   # closes the gen file If a generated file opened to check before
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
-        Common.showGen("close") #closes the gen file If a generated file opened to check before
+        Common.showGen("close", self.doc, None)   # closes the gen file If a generated file opened to check before
 
 
 class ViewProviderGen:

@@ -7,9 +7,10 @@ import copy
 import operator
 import glob
 
+
 def checkGenerations(workingDir):
     numGens = 1
-    loadCase =1
+    loadCase = 1
     # workingDir = '/'.join(master.FileName.split('/')[0:-1])
     while os.path.isdir(workingDir + "/Gen" + str(numGens)):
         numGens += 1
@@ -23,17 +24,17 @@ def searchAnalysed(master):
     numGenerations = checkGenerations(workingDir)
     for i in range(1, numGenerations+1):
         # Checking the loadcases in generated file
-        lc=0
-        lcStatus=[]
+        lc = 0
+        lcStatus = []
         for obj in master.Objects:
-            if obj.TypeId=="Fem::FemAnalysis":   #to choose analysis objects
-                lc+=1
-                analysisfolder=os.path.join(workingDir + f"/Gen{i}/loadCase{lc}/")
+            if obj.TypeId == "Fem::FemAnalysis":  # to choose analysis objects
+                lc += 1
+                analysisfolder = os.path.join(workingDir + f"/Gen{i}/loadCase{lc}/")
                 try:
                     # This returns an exception if analysis failed for this .frd file, because there is no results data
                     FRDPath = glob.glob(analysisfolder + "*.frd")[0]
                     try:
-                          FRDParser.FRDParser(FRDPath)
+                        FRDParser.FRDParser(FRDPath)
                     except:
                         status = "Failed"
                 except:
@@ -66,40 +67,19 @@ def checkGenParameters(master):
     return (header, parameters)
 
 
-
-def hsvToRgb(h, s, v):
-    if s == 0.0:
-        return v, v, v
-    i = int(h * 6.0)  # XXX assume int() truncates!
-    f = (h * 6.0) - i
-    p = v * (1.0 - s)
-    q = v * (1.0 - s * f)
-    t = v * (1.0 - s * (1.0 - f))
-    i = i % 6
-    if i == 0:
-        return v, t, p
-    if i == 1:
-        return q, v, p
-    if i == 2:
-        return p, v, t
-    if i == 3:
-        return p, q, v
-    if i == 4:
-        return t, p, v
-    if i == 5:
-        return v, p, q
-
-
-def showGen(item):
+def showGen(table, master, item):
     global old
     old = FreeCAD.ActiveDocument.Name
     if old[:3] == "Gen":
         FreeCAD.closeDocument(old)
-    if item=="close":
+    if table == "close":
+        FreeCAD.setActiveDocument(master.Name)
         return
-    index = item.row()+1
+
+    index = table.model().index(item.row(), 0)
+    index = int(float(index.data()))
     # Open the generation
-    workingDir = '/'.join(FreeCAD.ActiveDocument.FileName.split('/')[0:-1])
+    workingDir = '/'.join(master.FileName.split('/')[0:-1])
     docPath = workingDir + \
         f"/Gen{index}/Gen{index}.FCStd"
     docName = f"Gen{index}"
@@ -125,12 +105,10 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
                 [defaultColour for x in range(width)] for y in range(height)]
         else:
             self.colours = colours[:]
-        # print(self.itemList)
 
     def updateColours(self, colours):
         for i, row in enumerate(colours):
             self.colours[i][1:] = row
-        # self.dataChanged.emit()
 
     def updateData(self, table):
         for i, row in enumerate(table):
@@ -161,9 +139,10 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
 
     def sort(self, col, order):
         """sort table by given column number col"""
-        self.emit(PySide.QtCore.SIGNAL("layoutAboutToBeChanged()"))
+        self.layoutAboutToBeChanged.emit()
         self.itemList = sorted(self.itemList, key=operator.itemgetter(col))
+        self.colours = [c for _, c in sorted(zip(self.itemList, self.colours))]
+
         if order == PySide.QtCore.Qt.DescendingOrder:
             self.itemList.reverse()
-        self.emit(PySide.QtCore.Qt.SIGNAL("layoutChanged()"))
-        pass
+        self.layoutChanged.emit()
