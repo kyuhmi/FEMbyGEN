@@ -113,7 +113,8 @@ class ResultsPanel:
         self.form.resultsTable_all.setMaximumHeight(len(index)*40)
         self.form.resultsTable_all.setSortingEnabled(True)
 
-    def updateResultsTableSum(self):
+    def updateResultsTableSum(self, score=None):
+        print(score)
         header = self.doc.Results.FEAMetricsSum[0]
         items = self.doc.Results.FEAMetricsSum[1:]
         stats, numAnalysed = Common.checkAnalyses(self.doc)
@@ -127,7 +128,7 @@ class ResultsPanel:
 
         colours = self.generateColourScalesFromMetrics(self.doc.Results.FEAMetricsSum)
         self.tableModel = Common.GenTableModel(
-            self.form, table, header, colours)
+            self.form, table, header, colours, score)
         self.form.resultsTable_sum.setModel(self.tableModel)
         self.form.resultsTable_sum.resizeColumnsToContents()
         self.form.resultsTable_sum.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
@@ -186,7 +187,7 @@ class ResultsPanel:
         workingDir = '/'.join(self.doc.FileName.split('/')[0:-1])
         numGenerations = Common.checkGenerations(workingDir)
         if numGenerations > 0:
-            header = [["Volume[mm^3]", "Max Stress[MPa]", "Max Disp[mm]", "Mean Stress[MPa]","Internal Energy[Joule]", "Standard Dev. of En. Den"
+            header = [["Volume[mm^3]", "Max Stress[MPa]", "Max Disp[mm]", "Mean Stress[MPa]", "Internal Energy[Joule]", "Standard Dev. of En. Den"
                        ]]
 
             resultAll, resultSum = self.calculateFEAMetric()
@@ -213,7 +214,8 @@ class ResultsPanel:
                 intData, totalInt, volData, totalVol, denData = self.IntEnergyandVolume(resultPath)
                 energyDenStd = np.std(denData)
                 deviation.append(denData)
-                result.append([f"{totalVol:.2e}", f"{max:.2e}", f"{maxDisp:.2e}",f"{mean:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}"])
+                result.append([f"{totalVol:.2e}", f"{max:.2e}", f"{maxDisp:.2e}",
+                              f"{mean:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}"])
 
             self.getResultsToMaster(doc, i+1)
             FreeCAD.closeDocument(filename)
@@ -355,13 +357,34 @@ class ResultsPanel:
         return intData[:, 1]*1000, totalInt*1000, volData[:, 1], totalVol, denData[:, 2]*1000
 
     def ranking(self):
-        pass
-        # table = self.doc.FEA.FEAMetricsSum
-        # volume=float(self.form.volume.text)
-        # intEn=float(self.form.internalenergy.text)
-        # means=float(self.form.meanstress.text)
-        # maxs=float(self.form.maxstress.text)
-        # maxd=float(self.form.maxdisplacement.text)
+        print("ranking clicked")
+        table = np.array(self.doc.Results.FEAMetricsSum[1:], dtype=np.dtype("float"))
+        volume = float(self.form.volume.toPlainText())
+        maxs = float(self.form.maxstress.toPlainText())
+        maxd = float(self.form.maxdisplacement.toPlainText())
+        means = float(self.form.meanstress.toPlainText())
+        intEn = float(self.form.internalenergy.toPlainText())
+        std = float(self.form.standarddeviation.toPlainText())
+        try:
+            assert volume+intEn+std+means+maxs+maxd == 100
+            # calculating normalized value of results
+            # max result will be 0, min result will be 1
+            row, column = table.shape
+            normTable = np.zeros((row, column))
+            for i in range(column):
+                normTable[:, i] = 1-self.normalize(table[:, i])
+            score = volume*normTable[:, 0] + maxs*normTable[:, 1] + maxd*normTable[:, 2] + \
+                means*normTable[:, 3] + intEn*normTable[:, 4] + std*normTable[:, 5]
+            self.updateResultsTableSum(score)
+        except:
+            FreeCAD.Console.PrintError('Total weignt needs to be 100\n')
+
+    def normalize(self, vals):
+        minVal = np.min(vals)
+        maxVal = np.max(vals)
+        valRange = maxVal - minVal
+        norm = (vals-minVal)/valRange
+        return norm
 
     def accept(self):
         doc = FreeCADGui.getDocument(self.obj.Document)

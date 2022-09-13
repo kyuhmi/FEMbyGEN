@@ -187,7 +187,7 @@ class FEAPanel:
         except:
             table = []
             colours = []
-            gen=0
+            gen = 0
         tableModel = Common.GenTableModel(
             self.form, table, header, colours=colours)
         tableModel.layoutChanged.emit()

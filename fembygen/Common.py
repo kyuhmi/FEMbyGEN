@@ -88,7 +88,7 @@ def showGen(table, master, item):
 
 
 class GenTableModel(PySide.QtCore.QAbstractTableModel):
-    def __init__(self, parent, itemList, header, colours=None, *args):
+    def __init__(self, parent, itemList, header, colours=None, score=None, *args):
 
         PySide.QtCore.QAbstractTableModel.__init__(self, parent, *args)
         self.itemList = []
@@ -105,6 +105,9 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
                 [defaultColour for x in range(width)] for y in range(height)]
         else:
             self.colours = colours[:]
+    
+        if isinstance(score, np.ndarray):
+            self.arrange(score)
 
     def updateColours(self, colours):
         for i, row in enumerate(colours):
@@ -143,6 +146,16 @@ class GenTableModel(PySide.QtCore.QAbstractTableModel):
         self.itemList = sorted(self.itemList, key=operator.itemgetter(col))
         self.colours = [c for _, c in sorted(zip(self.itemList, self.colours))]
 
-        if order == PySide.QtCore.Qt.DescendingOrder:
+        if order != PySide.QtCore.Qt.DescendingOrder:
             self.itemList.reverse()
         self.layoutChanged.emit()
+
+    def arrange(self,score):
+        print("score is:",score)
+        self.layoutAboutToBeChanged.emit()
+        self.itemList = [c for _, c in sorted(zip(score, self.itemList))]
+        # self.colours = [c for _, c in sorted(zip(score, self.colours))]
+        self.layoutChanged.emit()
+        print(self.itemList)
+
+
