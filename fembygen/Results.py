@@ -100,12 +100,14 @@ class ResultsPanel:
         table = table.tolist()
         header = ["Gen"]+header
 
-        colours = self.generateColourScalesFromMetrics(self.doc.Results.FEAMetricsAll)
+        colours = self.generateColourScalesFromMetrics(
+            self.doc.Results.FEAMetricsAll)
         self.tableModel = Common.GenTableModel(
             self.form, table, header, colours)
         self.form.resultsTable_all.setModel(self.tableModel)
         self.form.resultsTable_all.resizeColumnsToContents()
-        self.form.resultsTable_all.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
+        self.form.resultsTable_all.horizontalHeader().setResizeMode(
+            PySide.QtGui.QHeaderView.ResizeToContents)
 
         self.form.resultsTable_all.clicked.connect(functools.partial(
             Common.showGen, self.form.resultsTable_all, self.doc))
@@ -114,7 +116,6 @@ class ResultsPanel:
         self.form.resultsTable_all.setSortingEnabled(True)
 
     def updateResultsTableSum(self, score=None):
-        print(score)
         header = self.doc.Results.FEAMetricsSum[0]
         items = self.doc.Results.FEAMetricsSum[1:]
         stats, numAnalysed = Common.checkAnalyses(self.doc)
@@ -126,12 +127,14 @@ class ResultsPanel:
         table = table.tolist()
         header = ["Gen"]+header
 
-        colours = self.generateColourScalesFromMetrics(self.doc.Results.FEAMetricsSum)
+        colours = self.generateColourScalesFromMetrics(
+            self.doc.Results.FEAMetricsSum)
         self.tableModel = Common.GenTableModel(
             self.form, table, header, colours, score)
         self.form.resultsTable_sum.setModel(self.tableModel)
         self.form.resultsTable_sum.resizeColumnsToContents()
-        self.form.resultsTable_sum.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
+        self.form.resultsTable_sum.horizontalHeader().setResizeMode(
+            PySide.QtGui.QHeaderView.ResizeToContents)
 
         self.form.resultsTable_sum.clicked.connect(functools.partial(
             Common.showGen, self.form.resultsTable_sum, self.doc))
@@ -140,7 +143,6 @@ class ResultsPanel:
         self.form.resultsTable_sum.setSortingEnabled(True)
 
     def generateColourScalesFromMetrics(self, table):
-
         items = np.array(table[1:], dtype=np.dtype("float"))
         width = len(table[0])
         height = len(items)
@@ -201,7 +203,8 @@ class ResultsPanel:
         statuses, numgAnly, lc = Common.searchAnalysed(self.doc)
         result = []
         deviation = []
-        for i, row in enumerate(statuses):  # TODO only for status is anlyzed other cases it will be none
+        # TODO only for status is anlyzed other cases it will be none
+        for i, row in enumerate(statuses):
             filename = f"Gen{i+1}"
             filePath = workingDir + f"/Gen{i+1}/{filename}.FCStd"
             for j, value in enumerate(row):
@@ -211,7 +214,8 @@ class ResultsPanel:
                 max = np.max(doc.CCX_Results.vonMises)
                 maxDisp = np.max(doc.CCX_Results.DisplacementLengths)
 
-                intData, totalInt, volData, totalVol, denData = self.IntEnergyandVolume(resultPath)
+                intData, totalInt, volData, totalVol, denData = self.IntEnergyandVolume(
+                    resultPath)
                 energyDenStd = np.std(denData)
                 deviation.append(denData)
                 result.append([f"{totalVol:.2e}", f"{max:.2e}", f"{maxDisp:.2e}",
@@ -357,8 +361,8 @@ class ResultsPanel:
         return intData[:, 1]*1000, totalInt*1000, volData[:, 1], totalVol, denData[:, 2]*1000
 
     def ranking(self):
-        print("ranking clicked")
-        table = np.array(self.doc.Results.FEAMetricsSum[1:], dtype=np.dtype("float"))
+        table = np.array(
+            self.doc.Results.FEAMetricsSum[1:], dtype=np.dtype("float"))
         volume = float(self.form.volume.toPlainText())
         maxs = float(self.form.maxstress.toPlainText())
         maxd = float(self.form.maxdisplacement.toPlainText())
@@ -374,7 +378,8 @@ class ResultsPanel:
             for i in range(column):
                 normTable[:, i] = 1-self.normalize(table[:, i])
             score = volume*normTable[:, 0] + maxs*normTable[:, 1] + maxd*normTable[:, 2] + \
-                means*normTable[:, 3] + intEn*normTable[:, 4] + std*normTable[:, 5]
+                means*normTable[:, 3] + intEn * \
+                normTable[:, 4] + std*normTable[:, 5]
             self.updateResultsTableSum(score)
         except:
             FreeCAD.Console.PrintError('Total weignt needs to be 100\n')
@@ -390,12 +395,14 @@ class ResultsPanel:
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
-        Common.showGen("close", self.doc, None)  # closes the gen file If a generated file opened to check before
+        # closes the gen file If a generated file opened to check before
+        Common.showGen("close", self.doc, None)
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
-        Common.showGen("close", self.doc, None)  # closes the gen file If a generated file opened to check before
+        # closes the gen file If a generated file opened to check before
+        Common.showGen("close", self.doc, None)
 
 
 class ViewProviderResult:
@@ -403,7 +410,8 @@ class ViewProviderResult:
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path = os.path.join(FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/Results.svg')
+        icon_path = os.path.join(
+            FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/Results.svg')
         return icon_path
 
     def attach(self, vobj):

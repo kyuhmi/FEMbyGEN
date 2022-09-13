@@ -107,7 +107,8 @@ class FEAPanel:
                     FreeCAD.Console.PrintMessage(f"{j} deleted\n")
 
                 except FileNotFoundError:
-                    FreeCAD.Console.PrintError(f"INFO: Generation {j} analysis data not found")
+                    FreeCAD.Console.PrintError(
+                        f"INFO: Generation {j} analysis data not found")
 
         doc = self.doc
         doc.FEA.Status = []
@@ -131,7 +132,8 @@ class FEAPanel:
                     if obj.TypeId == "Fem::FemAnalysis":  # to choose analysis objects
                         lc += 1
                         FemGui.setActiveAnalysis(obj)
-                        analysisfolder = os.path.join(self.workingDir + f"/Gen{i+1}/loadCase{lc}")
+                        analysisfolder = os.path.join(
+                            self.workingDir + f"/Gen{i+1}/loadCase{lc}")
                         os.mkdir(analysisfolder)
                     # Run FEA solver on generation
                         self.performFEA(Gen_Doc, obj, analysisfolder)
@@ -175,13 +177,16 @@ class FEAPanel:
                     colours[i, 0] = white
                     if value == "Analysed":
                         # green
-                        colours[i, j+1] = PySide.QtGui.QColor(114, 242, 73, 255)
+                        colours[i, j +
+                                1] = PySide.QtGui.QColor(114, 242, 73, 255)
                     elif value == "Not analysed":
                         # yellow
-                        colours[i, j+1] = PySide.QtGui.QColor(207, 184, 12, 255)
+                        colours[i, j +
+                                1] = PySide.QtGui.QColor(207, 184, 12, 255)
                     elif value == "Failed":
                         # red/pink
-                        colours[i, j+1] = PySide.QtGui.QColor(250, 100, 100, 255)
+                        colours[i, j +
+                                1] = PySide.QtGui.QColor(250, 100, 100, 255)
             table = table.tolist()
             colours = colours.tolist()
         except:
@@ -194,7 +199,8 @@ class FEAPanel:
         self.form.tableView.setModel(tableModel)
         self.form.tableView.clicked.connect(functools.partial(
             Common.showGen, self.form.tableView, self.doc))
-        self.form.tableView.horizontalHeader().setResizeMode(PySide.QtGui.QHeaderView.ResizeToContents)
+        self.form.tableView.horizontalHeader().setResizeMode(
+            PySide.QtGui.QHeaderView.ResizeToContents)
         self.form.tableView.setMinimumHeight(gen*40)
         self.form.tableView.setMaximumHeight(gen*40)
 
@@ -217,7 +223,8 @@ class FEAPanel:
         doc.recompute()
         # run the analysis step by step
 
-        fea = ccxtools.FemToolsCcx(analysis=Analysis)  # , solver=doc.SolverCcxTools)
+        # , solver=doc.SolverCcxTools)
+        fea = ccxtools.FemToolsCcx(analysis=Analysis)
         # analysisDir=self.workingDir+f"/Gen{GenerationNumber}"
         fea.setup_working_dir(Directory)
         fea.update_objects()
@@ -242,12 +249,14 @@ class FEAPanel:
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         doc.Document.recompute()
-        Common.showGen("close", self.doc, None)  # closes the gen file If a generated file opened to check before
+        # closes the gen file If a generated file opened to check before
+        Common.showGen("close", self.doc, None)
 
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
-        Common.showGen("close", self.doc, None)  # closes the gen file If a generated file opened to check before
+        # closes the gen file If a generated file opened to check before
+        Common.showGen("close", self.doc, None)
 
 
 class ViewProviderFEA:
@@ -255,7 +264,8 @@ class ViewProviderFEA:
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path = os.path.join(FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/FEA.svg')
+        icon_path = os.path.join(
+            FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/FEA.svg')
         return icon_path
 
     def attach(self, vobj):
