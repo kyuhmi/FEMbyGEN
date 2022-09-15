@@ -3,7 +3,7 @@
 
 [general]
 name=FEMbyGEN
-email=me@example.com
+email=serince@outlook.com
 author= Rahul Jhuree, Ögeday Yavuz, Serdar Turgut İnce
 FreeCADMinimumVersion=0.19
 description=Parametric Finite Element Analysis(FEM)
