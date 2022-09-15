@@ -1,8 +1,8 @@
 import FreeCAD, FreeCADGui
 
-class FGWorkbench(Workbench):
+class FEMbyGEN(Workbench):
     MenuText = "FEMbyGEN"
-    ToolTip = "Use generative design to optimise your part for Additive Manufacturing"
+    ToolTip = "Parametric FEM analysis"
     Icon = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/icon.svg"
 
     def Initialize(self):
@@ -34,4 +34,4 @@ class FGWorkbench(Workbench):
         return "Gui::PythonWorkbench"
 
 
-FreeCADGui.addWorkbench(FGWorkbench())
+FreeCADGui.addWorkbench(FEMbyGEN())
