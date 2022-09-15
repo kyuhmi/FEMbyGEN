@@ -174,7 +174,7 @@ class ResultsPanel:
                     colours[j][i+1] = PySide.QtGui.QColor(
                         col[0], col[1], col[2], 255)
                 except ValueError:
-                    # Item was not a number. Likely a string because an error occured for analysis in this row
+                    # Item was not a number. Likely a string because an error occurred for analysis in this row
                     # so colour it pink
                     colours[j][i+1] = PySide.QtGui.QColor(230, 184, 184, 255)
                     pass
@@ -340,7 +340,7 @@ class ResultsPanel:
         totalIntEnd = text.find("volume", totalIntStart)-1
         totalInt = float(text[totalIntStart:totalIntEnd])
 
-        # getting elemnts volume
+        # getting elements volume
         volStart = text.find("\n", totalIntEnd+1)+1
         volEnd = text.find("total volume", totalIntStart)-1
         volData = np.fromstring(text[volStart:volEnd], sep="\n")

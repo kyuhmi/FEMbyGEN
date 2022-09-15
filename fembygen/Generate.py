@@ -167,7 +167,7 @@ class GeneratePanel():
 
         param = []
 
-        #  Getting datas from Spreadsheet
+        #  Getting data from Spreadsheet
         for i in range(self.inumber[0]):
             paramNames.append(master.Parameters.get(f'B{i+2}'))
             mins = float(master.Parameters.get(f'C{i+2}'))

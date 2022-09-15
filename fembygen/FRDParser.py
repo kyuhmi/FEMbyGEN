@@ -361,7 +361,7 @@ class FRDEntity(object):
 
     Attributes:
         key         Entity Key (Always -5)
-        name        Entity name to be used in the cgx menu fo this comp.
+        name        Entity name to be used in the cgx menu for this comp.
         menu        Always 1
         ictype      Type of Entity:
                         1   scalar
@@ -371,7 +371,7 @@ class FRDEntity(object):
                         14  tensor with 6 amplitudes and 6 phase-angles
         icind1      sub-component index or row number
         icind2      column number for ictype==4
-        iexist      0   data are provided (only imlemented type)
+        iexist      0   data are provided (only implemented type)
         icname      ALL - calculate the total displacement if ictype==2
 
     """
@@ -950,7 +950,7 @@ class FRDParser(object):
         return msg
 
     def assert_node_results(self, func, nodes=None, names=None, steps=None):
-        """Peform a given test on a subset of all result values.
+        """Perform a given test on a subset of all result values.
 
         If the test fails on a node, an AssertionError, showing node,
         name and step information is raised.
