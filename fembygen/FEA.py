@@ -206,7 +206,7 @@ class FEAPanel:
 
     def outputs(self, directory):
         """ It modifies the inp file to get extra outputs
-        such as elemnt volumes and elements internal energies"""
+        such as element volumes and elements internal energies"""
 
         name = glob.glob(directory+"/*.inp")
 

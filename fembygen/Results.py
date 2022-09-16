@@ -80,7 +80,6 @@ class ResultsPanel:
         if self.doc.Results.FEAMetricsAll == []:
             FreeCAD.Console.PrintMessage("Calculating metrics...")
             self.calcAndSaveFEAMetrics()
-            FreeCAD.open(object.Object.Document.FileName)
         self.form.arrange.clicked.connect(self.ranking)
 
         self.updateResultsTableAll()
@@ -174,7 +173,7 @@ class ResultsPanel:
                     colours[j][i+1] = PySide.QtGui.QColor(
                         col[0], col[1], col[2], 255)
                 except ValueError:
-                    # Item was not a number. Likely a string because an error occured for analysis in this row
+                    # Item was not a number. Likely a string because an error occurred for analysis in this row
                     # so colour it pink
                     colours[j][i+1] = PySide.QtGui.QColor(230, 184, 184, 255)
                     pass
@@ -186,8 +185,8 @@ class ResultsPanel:
         return int(mult*200), 255, int(mult*200)
 
     def calcAndSaveFEAMetrics(self):
-        workingDir = '/'.join(self.doc.FileName.split('/')[0:-1])
-        numGenerations = Common.checkGenerations(workingDir)
+        master=self.doc
+        numGenerations = Common.checkGenerations(self.workingDir)
         if numGenerations > 0:
             header = [["Volume[mm^3]", "Max Stress[MPa]", "Max Disp[mm]", "Mean Stress[MPa]", "Internal Energy[Joule]", "Standard Dev. of En. Den"
                        ]]
@@ -195,31 +194,37 @@ class ResultsPanel:
             resultAll, resultSum = self.calculateFEAMetric()
             tableAll = header + resultAll
             tableSum = header+resultSum
-            self.doc.Results.FEAMetricsAll = tableAll
-            self.doc.Results.FEAMetricsSum = tableSum
+            master.Results.FEAMetricsAll = tableAll
+            master.Results.FEAMetricsSum = tableSum
+        FreeCAD.open(master.FileName)
 
     def calculateFEAMetric(self):
-        workingDir = '/'.join(self.doc.FileName.split('/')[0:-1])
-        statuses, numgAnly, lc = Common.searchAnalysed(self.doc)
+        master=self.doc
+        statuses, numgAnly, lc = Common.searchAnalysed(master)
         result = []
         deviation = []
-        # TODO only for status is anlyzed other cases it will be none
-        for i, row in enumerate(statuses):
-            filename = f"Gen{i+1}"
-            filePath = workingDir + f"/Gen{i+1}/{filename}.FCStd"
-            for j, value in enumerate(row):
-                resultPath = workingDir + f"/Gen{i+1}/loadCase{j+1}/"
-                doc = FreeCAD.open(filePath, hidden=True)
-                mean = np.mean(doc.CCX_Results.vonMises)
-                max = np.max(doc.CCX_Results.vonMises)
-                maxDisp = np.max(doc.CCX_Results.DisplacementLengths)
 
-                intData, totalInt, volData, totalVol, denData = self.IntEnergyandVolume(
-                    resultPath)
-                energyDenStd = np.std(denData)
-                deviation.append(denData)
-                result.append([f"{totalVol:.2e}", f"{max:.2e}", f"{maxDisp:.2e}",
-                              f"{mean:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}"])
+        # Getting the analysis table to read results
+        for i, row in enumerate(statuses):
+            # open the generation file
+            filename = f"Gen{i+1}"
+            filePath = self.workingDir + f"/Gen{i+1}/{filename}.FCStd"
+            doc = FreeCAD.open(filePath, hidden=True)
+            
+            # for each loadcases it's read the results
+            for j, value in enumerate(row):
+                if value=="Analysed":
+                    resultPath = self.workingDir + f"/Gen{i+1}/loadCase{j+1}/" 
+                    mean = np.mean(doc.CCX_Results.vonMises)
+                    max = np.max(doc.CCX_Results.vonMises)
+                    maxDisp = np.max(doc.CCX_Results.DisplacementLengths)
+
+                    intData, totalInt, volData, totalVol, denData = self.IntEnergyandVolume(
+                        resultPath)
+                    energyDenStd = np.std(denData)
+                    deviation.append(denData)
+                    result.append([f"{totalVol:.2e}", f"{max:.2e}", f"{maxDisp:.2e}",
+                                f"{mean:.2e}", f"{totalInt:.2e}", f"{energyDenStd:.2e}"])
 
             self.getResultsToMaster(doc, i+1)
             FreeCAD.closeDocument(filename)
@@ -241,6 +246,13 @@ class ResultsPanel:
         return result, result_sum
 
     def sumResults(self, total, doc):
+        """The function is for sum the results objects of Loadcases. By the way optimum model can be selected in a better way.
+        Solidworks and Ansys topology optimizations uses similar method.
+        https://hawkridgesys.com/blog/solidworks-simulation-multiple-load-cases-for-topology-studies
+        https://us.v-cdn.net/6032193/uploads/JE71WKGYSLZ2/image.png
+
+        For this function work, meshes of all Loadcases needs to be same.
+        """
         DisplacementLengths = np.zeros(len(total.DisplacementLengths))
         DisplacementVectors = np.zeros((len(total.DisplacementVectors), 3))
         MaxShear = np.zeros(len(total.MaxShear))
@@ -282,7 +294,8 @@ class ResultsPanel:
                 PrincipalMin += np.array(obj.PrincipalMin)
                 vonMises += np.array(obj.vonMises)
 
-        total.DisplacementLengths = DisplacementLengths.tolist()
+        # Assigning summed results to the an object
+        total.DisplacementLengths = DisplacementLengths.tolist() #it includes Vector object, therefore it converted to the list
         vectorized = []
         for i in DisplacementVectors.tolist():
             vectorized.append(FreeCAD.Vector(i))
@@ -305,19 +318,20 @@ class ResultsPanel:
         total.PrincipalMin = PrincipalMin.tolist()
 
     def getResultsToMaster(self, doc, GenNo):
+        master=self.doc
         doc.CCX_Results.Label = f"Gen{GenNo}_Results"
         doc.ResultMesh.Label = f"Gen{GenNo}_Mesh"
-        self.doc.copyObject(doc.CCX_Results, False)
-        self.doc.copyObject(doc.ResultMesh, False)
+        master.copyObject(doc.CCX_Results, False)
+        master.copyObject(doc.ResultMesh, False)
 
-        totalResult = self.doc.getObjectsByLabel(f"Gen{GenNo}_Results")[0]
-        resultMesh = self.doc.getObjectsByLabel(f"Gen{GenNo}_Mesh")[0]
+        totalResult = master.getObjectsByLabel(f"Gen{GenNo}_Results")[0]
+        resultMesh = master.getObjectsByLabel(f"Gen{GenNo}_Mesh")[0]
 
         # to sum up all loadcases result
         self.sumResults(totalResult, doc)
 
         totalResult.Mesh = resultMesh
-        self.doc.Results.addObject(totalResult)
+        master.Results.addObject(totalResult)
 
         totalResult.Visibility = False
         resultMesh.Visibility = False
@@ -340,7 +354,7 @@ class ResultsPanel:
         totalIntEnd = text.find("volume", totalIntStart)-1
         totalInt = float(text[totalIntStart:totalIntEnd])
 
-        # getting elemnts volume
+        # getting elements volume
         volStart = text.find("\n", totalIntEnd+1)+1
         volEnd = text.find("total volume", totalIntStart)-1
         volData = np.fromstring(text[volStart:volEnd], sep="\n")
@@ -361,6 +375,8 @@ class ResultsPanel:
         return intData[:, 1]*1000, totalInt*1000, volData[:, 1], totalVol, denData[:, 2]*1000
 
     def ranking(self):
+        """ By using weight of the result, it arranges the results.
+        """
         table = np.array(
             self.doc.Results.FEAMetricsSum[1:], dtype=np.dtype("float"))
         volume = float(self.form.volume.toPlainText())
@@ -377,6 +393,8 @@ class ResultsPanel:
             normTable = np.zeros((row, column))
             for i in range(column):
                 normTable[:, i] = 1-self.normalize(table[:, i])
+
+            # Calculating score by using weight and normalized results
             score = volume*normTable[:, 0] + maxs*normTable[:, 1] + maxd*normTable[:, 2] + \
                 means*normTable[:, 3] + intEn * \
                 normTable[:, 4] + std*normTable[:, 5]
@@ -385,6 +403,8 @@ class ResultsPanel:
             FreeCAD.Console.PrintError('Total weignt needs to be 100\n')
 
     def normalize(self, vals):
+        """Resuls range can be different. So, the function make results between 0~1 to calculate ranking score.
+        """
         minVal = np.min(vals)
         maxVal = np.max(vals)
         valRange = maxVal - minVal

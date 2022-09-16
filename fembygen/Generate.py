@@ -4,7 +4,6 @@ import Fem
 import os.path
 import shutil
 from fembygen import Common
-import csv
 import numpy as np
 import itertools
 import PySide
@@ -167,7 +166,7 @@ class GeneratePanel():
 
         param = []
 
-        #  Getting datas from Spreadsheet
+        #  Getting data from Spreadsheet
         for i in range(self.inumber[0]):
             paramNames.append(master.Parameters.get(f'B{i+2}'))
             mins = float(master.Parameters.get(f'C{i+2}'))
@@ -285,9 +284,24 @@ class GeneratePanel():
             except:
                 FreeCAD.Console.PrintError(
                     "Error while trying to delete analysis folder for generation " + str(i))
+        
+        # Delete if earlier generative objects exist
+        try:
+            for l in self.doc.Generative_Design.Group:
+                if l.Name == "Parameters" or l.Name == "Generate":
+                    pass
+                elif l.Name == "Results":
+                    # for m in master.Results.Group:
+                    #     master.removeObject(m.Name)
+                    self.purge_results()
+                    self.doc.removeObject("Results")
+                else:
+                    self.doc.removeObject(l.Name)
+        except:
+            pass
 
         self.doc.Generate.Generated_Parameters = None
-
+        #refreshing the table
         self.resetViewControls(numGens)
         self.updateParametersTable()
         FreeCAD.setActiveDocument(self.doc.Name)

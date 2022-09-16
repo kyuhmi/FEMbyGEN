@@ -1,16 +1,13 @@
 import FreeCAD
 import PySide
 import os.path
-from fembygen import FRDParser
 import numpy as np
-import copy
 import operator
 import glob
 
 
 def checkGenerations(workingDir):
     numGens = 1
-    loadCase = 1
     # workingDir = '/'.join(master.FileName.split('/')[0:-1])
     while os.path.isdir(workingDir + "/Gen" + str(numGens)):
         numGens += 1
@@ -35,7 +32,8 @@ def searchAnalysed(master):
                     # This returns an exception if analysis failed for this .frd file, because there is no results data
                     FRDPath = glob.glob(analysisfolder + "*.frd")[0]
                     try:
-                        FRDParser.FRDParser(FRDPath)
+                        with open(FRDPath,"r") as file:
+                            file.readline().decode().strip()
                     except:
                         status = "Failed"
                 except:
