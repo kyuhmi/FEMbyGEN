@@ -256,7 +256,7 @@ class FEAPanel:
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         # closes the gen file If a generated file opened to check before
-        Common.showGen("close", self.doc, None)
+        # Common.showGen("close", self.doc, None)
 
 
 class ViewProviderFEA:

@@ -386,7 +386,7 @@ class GeneratePanel():
     def reject(self):
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
-        Common.showGen("close", self.doc, None)   # closes the gen file If a generated file opened to check before
+        # Common.showGen("close", self.doc, None)   # closes the gen file If a generated file opened to check before
 
 
 class ViewProviderGen:

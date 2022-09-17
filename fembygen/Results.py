@@ -6,6 +6,7 @@ import numpy as np
 from fembygen import Common
 import glob
 import functools
+from femresult.resulttools import fill_femresult_stats
 
 
 def makeResult():
@@ -316,6 +317,8 @@ class ResultsPanel:
         total.PrincipalMax = PrincipalMax.tolist()
         total.PrincipalMed = PrincipalMed.tolist()
         total.PrincipalMin = PrincipalMin.tolist()
+        total.vonMises = vonMises.tolist()
+        fill_femresult_stats(total)
 
     def getResultsToMaster(self, doc, GenNo):
         master=self.doc
@@ -422,7 +425,7 @@ class ResultsPanel:
         doc = FreeCADGui.getDocument(self.obj.Document)
         doc.resetEdit()
         # closes the gen file If a generated file opened to check before
-        Common.showGen("close", self.doc, None)
+        # Common.showGen("close", self.doc, None)
 
 
 class ViewProviderResult:
