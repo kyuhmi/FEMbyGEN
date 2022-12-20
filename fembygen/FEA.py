@@ -17,8 +17,11 @@ def makeFEA():
         obj = FreeCAD.ActiveDocument.FEA
         obj.isValid()
     except:
-        obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "FEA")
-        FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
+        try:
+            obj = FreeCAD.ActiveDocument.addObject("Part::FeaturePython", "FEA")
+            FreeCAD.ActiveDocument.Generative_Design.addObject(obj)
+        except:
+            return None
     FEA(obj)
     if FreeCAD.GuiUp:
         ViewProviderFEA(obj.ViewObject)
@@ -57,14 +60,15 @@ class FEACommand():
 
     def Activated(self):
         obj = makeFEA()
-        # panel = ResultsPanel(obj)
-        # FreeCADGui.Control.showDialog(panel)
-        doc = FreeCADGui.getDocument(obj.ViewObject.Object.Document)
-        if not doc.getInEdit():
-            doc.setEdit(obj.ViewObject.Object.Name)
-        else:
-            FreeCAD.Console.PrintError('Existing task dialog already open\n')
-        return
+        try:
+            doc = FreeCADGui.getDocument(obj.ViewObject.Object.Document)
+            if not doc.getInEdit():
+                doc.setEdit(obj.ViewObject.Object.Name)
+            else:
+                FreeCAD.Console.PrintError('Existing task dialog already open\n')
+            return
+        except:
+            FreeCAD.Console.PrintError('Make sure that you are working on the master file. Close the generated file\n')
 
     def IsActive(self):
         """Here you can define if the command must be active or not (greyed) if certain conditions
@@ -97,7 +101,7 @@ class FEAPanel:
         self.form.deleteAnalyses.clicked.connect(self.deleteGenerations)
 
     def deleteGenerations(self):
-        FreeCAD.Console.PrintMessage("Deleting...")
+        FreeCAD.Console.PrintMessage("Deleting...\n")
         numGens = Common.checkGenerations(self.workingDir)
         for i in range(1, numGens+1):
             lcases = glob.glob(self.workingDir + f"/Gen{i}/loadCase*")
@@ -108,16 +112,20 @@ class FEAPanel:
 
                 except FileNotFoundError:
                     FreeCAD.Console.PrintError(
-                        f"INFO: Generation {j} analysis data not found")
+                        f"INFO: Generation {j} analysis data not found\n")
+                # Delete if earlier generative objects exist
 
-        doc = self.doc
-        doc.FEA.Status = []
-        doc.FEA.NumberofAnalysis = 0
-        doc.FEA.NumberOfLoadCase = 0
+        try:  # If already results imported, try to delete those
+            Common.purge_results(self.doc)
+        except:
+            pass
+        self.doc.FEA.Status = []
+        self.doc.FEA.NumberofAnalysis = 0
+        self.doc.FEA.NumberOfLoadCase = 0
         self.updateAnalysisTable()
 
     def FEAGenerations(self):
-        FreeCAD.Console.PrintMessage("Analysis starting")
+        FreeCAD.Console.PrintMessage("Analysis starting\n")
         for i in range(self.numGenerations):
             # Open generated part
             partName = f"Gen{i+1}"
@@ -201,8 +209,8 @@ class FEAPanel:
             Common.showGen, self.form.tableView, self.doc))
         self.form.tableView.horizontalHeader().setResizeMode(
             PySide.QtGui.QHeaderView.ResizeToContents)
-        self.form.tableView.setMinimumHeight(gen*40)
-        self.form.tableView.setMaximumHeight(gen*40)
+        self.form.tableView.setMinimumHeight(22+gen*30)
+        self.form.tableView.setMaximumHeight(22+gen*30)
 
     def outputs(self, directory):
         """ It modifies the inp file to get extra outputs
