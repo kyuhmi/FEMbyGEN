@@ -28,12 +28,59 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QLabel" name="readyLabel">
-       <property name="text">
-        <string>Ready</string>
+      <widget class="QComboBox" name="selectDesign">
+       <item>
+        <property name="text">
+         <string>Full Factorial Design</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Taguchi Optimization Design</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Plackett Burman Design</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Box Behnken Design</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Latin Hyper Cube Design</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Central Composite Design</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="more">
+       <property name="minimumSize">
+        <size>
+         <width>30</width>
+         <height>0</height>
+        </size>
        </property>
-       <property name="alignment">
-        <set>Qt::AlignCenter</set>
+       <property name="maximumSize">
+        <size>
+         <width>30</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset>
+         <normaloff>:/svg/FEMbyGEN/fembygen/icons/setting.svg</normaloff>:/svg/FEMbyGEN/fembygen/icons/setting.svg</iconset>
        </property>
       </widget>
      </item>
@@ -164,6 +211,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../../aa.qrc"/>
+ </resources>
  <connections/>
 </ui>
