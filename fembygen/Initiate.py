@@ -88,7 +88,7 @@ class ViewProviderIni:
         vobj.Proxy = self
 
     def getIcon(self):
-        icon_path = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/icon.svg"
+        icon_path = FreeCAD.getUserAppDataDir() + 'Mod/FEMbyGEN/fembygen/icons/Initiate.svg'
         return icon_path
 
     def attach(self, vobj):

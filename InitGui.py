@@ -1,22 +1,28 @@
-import FreeCAD, FreeCADGui
+import FreeCAD
+import FreeCADGui
 
 
 class FEMbyGEN(Workbench):
-    MenuText = "FEMbyGEN"
-    ToolTip = "Parametric FEM analysis"
-    Icon = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/icon.svg"
+    "FEMbyGEN workbench object"
+
+    def __init__(self):
+        self.__class__.Icon = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/icons/icon.svg"
+        self.__class__.MenuText = "FEMbyGEN"
+        self.__class__.ToolTip = "Parametric FEM analysis"
+
+        from PySide import QtCore
+        ICONS_PATH = FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/icons/"
+        QtCore.QDir.addSearchPath("icons", ICONS_PATH)
 
     def Initialize(self):
         """This function is executed when FreeCAD starts"""
 
-        from fembygen import Initiate, Alias, Generate, FEA,createGeo, Results, Topology
-        FreeCADGui.addIconPath(FreeCAD.getUserAppDataDir() + "Mod/FEMbyGEN/fembygen/icons/")
-
-        self.list = ["Initiate", "Alias","Generate", "FEA","createGeo", "Results", "Topology"]  # A list of command names created in the line above
+        from fembygen import Initiate, Alias, Generate, FEA, createGeo, Results, Topology
+        self.list = ["Initiate", "Alias", "Generate", "FEA", "createGeo", "Results",
+                     "Topology"]  # A list of command names created in the line above
 
         self.appendToolbar("Commands", self.list)  # creates a new toolbar with your commands
         self.appendMenu("FEMbyGEN", self.list)  # creates a new menu
-
 
     def Activated(self):
         """This function is executed when the workbench is activated"""

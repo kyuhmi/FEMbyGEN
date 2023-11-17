@@ -11,7 +11,7 @@
         <workbench>
             <classname>FEMbyGEN</classname>
             <subdirectory>./</subdirectory>
-            <icon>icon.svg</icon>
+            <icon>fembygen/icons/icon.svg</icon>
             <tag>FEM</tag>
             <tag>FEA</tag>
             <tag>solver</tag>

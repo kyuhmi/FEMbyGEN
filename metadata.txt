@@ -13,7 +13,7 @@ version=2.0
 tracker=https://forum.freecadweb.org/viewtopic.php?f=18&t=71905
 repository=https://github.com/Serince/FEMbyGEN
 license=LGPL
-icon="icon.svg"
+icon="fembygen/icons/icon.svg"
 
 [dependencies]
 workbenches=FemWorkbench
