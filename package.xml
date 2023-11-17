@@ -17,5 +17,6 @@
             <tag>solver</tag>
             <tag>spreadsheet</tag>
         </workbench>
+        <depend>scipy</depend>
     </content>
 </package>
