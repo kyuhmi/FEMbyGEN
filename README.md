@@ -32,3 +32,4 @@ By clicking toplogy button you can run a topology optimization analysis.
 ## Requirements
 - scipy => 1.0.0
 - FreeCAD => 0.19.0
+FEMvtGEN has been tested on FreeCAD 0.20 and scipy 1.10.1
