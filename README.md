@@ -8,18 +8,9 @@ This project was devoloped based on [Rahul](https://github.com/MightyBucket/) Ma
 ## Installation instructions
 
 This folder contains the code for a workbench plug-in for FreeCAD. Therefore you must have FreeCAD installed to use it.
-FreeCAD 0.20 can be downloaded for free from https://www.freecadweb.org/
+FreeCAD can be downloaded for free from https://www.freecadweb.org/
 
-You can install it by addon manager in the FreeCAD or you can add this webpage address to Edit > Preferences > Addon Manager > Custom repository in Freecad. Second method after downloading this repository and  manually copy the 'FembyGen' folder to the user 'Mod' directory for FreeCAD. This is normally found in the following directory:
-
-in Windows:
-`C:\Users\*UserName*\AppData\Roaming\FreeCAD\Mod
-
-in Linux
-/home/*UserName*/.local/FreeCAD/Mod
-Where `UserName` is replaced with the name of your user profile.
-
-Once copied, start up FreeCAD. From the workbench selection drop down menu in the top middle of the window, you should see the option for "FEMbyGEN". Selecting this will activate the workbench. All of the functions will work out of the box.
+You can install it by addon manager in the FreeCAD. From the workbench selection drop down menu in the top middle of the window, you should see the option for "FEMbyGEN". Selecting this will activate the workbench. All of the functions will work out of the box.
 
 ## Usage
 
@@ -39,4 +30,5 @@ It offers also a suggesting optimum geometry for your boundry conditions. By cli
 By clicking toplogy button you can run a topology optimization analysis. 
 
 ## Requirements
-- scipy
+- scipy => 1.0.0
+- FreeCAD => 0.19.0
