@@ -1,6 +1,7 @@
 import FreeCAD
 import FreeCADGui
 import os
+from fembygen import Common
 
 MAX_NUM_PARAMETER = 10    # maximum number of parameters
 LOCATION = os.path.normpath('Mod/FEMbyGEN/fembygen')
