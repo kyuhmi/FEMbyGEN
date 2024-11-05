@@ -340,7 +340,7 @@ class GeneratePanel():
 
         master.save()  # too store generated values in generate object
         FreeCAD.Console.PrintMessage("Generation done successfully!\n")
-        Common.openGen(1)
+        
 
     def deleteGenerations(self):
         qm = QtGui.QMessageBox
