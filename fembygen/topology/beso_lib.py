@@ -651,7 +651,7 @@ def write_inp(file_name, file_nameW, elm_states, number_of_states, domains, doma
 def import_FI_int_pt(reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
                      domains_from_config, steps_superposition, displacement_graph):
     try:
-        f = open(file_nameW + ".dat", "r")
+        f = open(os.path.join(file_nameW + ".dat"), "r")
     except IOError:
         msg = "CalculiX result file not found, check your inputs"
         write_to_log(file_name, "\nERROR: " + msg + "\n")
@@ -983,7 +983,7 @@ def import_FI_int_pt(reference_value, file_nameW, domains, criteria, domain_FI, 
 
 # function for importing displacements if import_FI_int_pt is not called to read .dat file
 def import_displacement(file_nameW, displacement_graph, steps_superposition):
-    f = open(file_nameW + ".dat", "r")
+    f = open(os.path.join(file_nameW + ".dat"), "r")
     read_displacement = 0
     disp_i = [None for _ in range(len(displacement_graph))]
     disp_condition = {}
@@ -1078,7 +1078,7 @@ def import_displacement(file_nameW, displacement_graph, steps_superposition):
 def import_FI_node(reference_value, file_nameW, domains, criteria, domain_FI, file_name, elm_states,
                    steps_superposition):
     try:
-        f = open(file_nameW + ".frd", "r")
+        f = open(os.path.join(file_nameW + ".frd"), "r")
     except IOError:
         msg = "CalculiX result file not found, check your inputs"
         write_to_log(file_name, "\nERROR: " + msg + "\n")
@@ -1498,7 +1498,7 @@ def export_frd(file_nameW, nodes, Elements, elm_states, number_of_states):
 
     # find all possible states in elm_states and run separately for each of them
     for state in range(number_of_states):
-        f = open(file_nameW + "_state" + str(state) + ".frd", "w")
+        f = open(os.path.join(file_nameW + "_state" + str(state) + ".frd"), "w")
 
         # print nodes
         associated_nodes = []
@@ -1561,8 +1561,7 @@ def export_inp(file_nameW, nodes, Elements, elm_states, number_of_states):
 
     # find all possible states in elm_states and run separately for each of them
     for state in range(number_of_states):
-        f = open(file_nameW + "_state" + str(state) + ".inp", "w")
-
+        f = open(os.path.join(file_nameW + "_state" + str(state) + ".inp"), "w")
         # print nodes
         associated_nodes = []
         get_associated_nodes(Elements.tria3)
@@ -1608,7 +1607,7 @@ def export_inp(file_nameW, nodes, Elements, elm_states, number_of_states):
 
 # sub-function to write vtk mesh
 def vtk_mesh(file_nameW, nodes, Elements):
-    f = open(file_nameW + ".vtk", "w")
+    f = open(os.path.join(file_nameW + ".vtk"), "w")
     f.write("# vtk DataFile Version 3.0\n")
     f.write("Results from optimization\n")
     f.write("ASCII\n")
@@ -1692,7 +1691,7 @@ def vtk_mesh(file_nameW, nodes, Elements):
 
 
 def append_vtk_states(file_nameW, i, en_all, elm_states):
-    f = open(file_nameW + ".vtk", "a")
+    f = open(os.path.join(file_nameW + ".vtk"), "a")
 
     # element state
     f.write("\nSCALARS element_states" + str(i).zfill(3) + " float\n")
@@ -1712,7 +1711,7 @@ def append_vtk_states(file_nameW, i, en_all, elm_states):
 
 def export_vtk(file_nameW, nodes, Elements, elm_states, sensitivity_number, criteria, FI_step, FI_step_max):
     [en_all, associated_nodes] = vtk_mesh(file_nameW, nodes, Elements)
-    f = open(file_nameW + ".vtk", "a")
+    f = open(os.path.join(file_nameW + ".vtk"), "a")
 
     # element state
     f.write("\nSCALARS element_states float\n")
@@ -1839,7 +1838,7 @@ def export_csv(domains_from_config, domains, criteria, FI_step, FI_step_max, fil
                             FI_criteria[en][FIn] = FI_step[sn][en][FIn]
 
     # write element values to the csv file
-    f = open(file_nameW + ".csv", "w")
+    f = open(os.path.join(file_nameW + ".csv"), "w")
     line = "element_number, cg_x, cg_y, cg_z, element_state, sensitivity_number, "
     for cr in criteria:
         if cr[0] == "stress_von_Mises":

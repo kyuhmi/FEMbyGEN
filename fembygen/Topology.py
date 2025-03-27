@@ -608,13 +608,17 @@ class TopologyPanel(QtGui.QWidget):
                 else:  # 0 means None thickness selected
                     elset_name = self.doc.Topology.combobox[case][2][elset_id].Name + "Solid"
                 modulus = float(self.doc.Topology.combobox[case][2]
-                                [elset_id].Material["YoungsModulus"].split()[0])  # MPa
+                                    [elset_id].Material["YoungsModulus"].split()[0].replace(",",".")) # MPa
+                print("modulus",modulus)
                 if self.doc.Topology.combobox[case][2][elset_id].Material["YoungsModulus"].split()[1] != "MPa":
-                    raise Exception(" units not recognised in " + self.doc.Topology.combobox[elset_id][2])
-                poisson = float(self.doc.Topology.combobox[case][2][elset_id].Material["PoissonRatio"].split()[0])
+                    if self.doc.Topology.combobox[case][2][elset_id].Material["YoungsModulus"].split()[1] == "GPa":
+                        modulus*=1000
+                    else:
+                        raise Exception(f"Units not recognised in: {self.doc.Topology.combobox[elset_id][2][0].Name}")
+                poisson = float(self.doc.Topology.combobox[case][2][elset_id].Material["PoissonRatio"].split()[0].replace(",","."))
                 try:
                     density = float(self.doc.Topology.combobox[case][2][elset_id].Material["Density"].split()[
-                        0]) * 1e-12  # kg/m3 -> t/mm3
+                        0].replace(",",".")) * 1e-12  # kg/m3 -> t/mm3
                     self.doc.Topology.domain_density[analysis] = {elset_name: [density*1e-6, density]}
                     if self.doc.Topology.combobox[case][2][elset_id].Material["Density"].split()[1] not in ["kg/m^3", "kg/m3"]:
                         raise Exception(" units not recognised in " + self.doc.Topology.combobox[elset_id][2])
@@ -622,19 +626,28 @@ class TopologyPanel(QtGui.QWidget):
                     self.doc.Topology.domain_density[analysis] = {elset_name: [0, 0]}
                 try:
                     conductivity = float(
-                        self.doc.Topology.combobox[case][2][elset_id].Material["ThermalConductivity"].split()[0])  # W/m/K
+                        self.doc.Topology.combobox[case][2][elset_id].Material["ThermalConductivity"].split()[0].replace(",","."))  # W/m/K
                     if self.doc.Topology.combobox[case][2][elset_id].Material["ThermalConductivity"].split()[1] != "W/m/K":
                         raise Exception(" units not recognised in " +
                                         self.doc.Topology.combobox[case][2][elset_id].Name)
                 except KeyError:
                     conductivity = 0.
                 try:
-                    if self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[1] == "um/m/K":
+                    try:
+                        unit = self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[1]
+                        print(f"Thermal Expansion Coefficient Unit: {unit}")
+                        
+                        # Eğer birim "µm/m/K" ise "um/m/K" olarak değiştir
+                        unit = unit.replace("µ", "u")
+                    except KeyError:
+                        print("ThermalExpansionCoefficient bilgisi bulunamadi.")
+
+                    if unit == "um/m/K":
                         expansion = float(self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[
-                            0]) * 1e-6  # um/m/K -> mm/mm/K
-                    elif self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[1] == "m/m/K":
+                            0].replace(",", ".")) * 1e-6  # um/m/K -> mm/mm/K
+                    elif unit == "m/m/K":
                         expansion = float(self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[
-                            0])  # m/m/K -> mm/mm/K
+                            0].replace(",", "."))  # m/m/K -> mm/mm/K
                     else:
                         raise Exception(" units not recognised in " +
                                         self.doc.Topology.combobox[case][2][elset_id].Name)
@@ -642,14 +655,14 @@ class TopologyPanel(QtGui.QWidget):
                     expansion = 0.
                 try:
                     specific_heat = float(self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"].split()[
-                        0]) * 1e6  # J/kg/K -> mm^2/s^2/K
+                        0].replace(",",".")) * 1e6  # J/kg/K -> mm^2/s^2/K
                     if self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"].split()[1] != "J/kg/K":
                         raise Exception(" units not recognised in " +
                                         self.doc.Topology.combobox[case][2][elset_id].Name)
                 except KeyError:
                     specific_heat = 0.
                 if thickness_id > -1:
-                    thickness = float(str(self.doc.Topology.combobox[case][3][thickness_id].Thickness).split()[0])  # mm
+                    thickness = float(str(self.doc.Topology.combobox[case][3][thickness_id].Thickness).split()[0].replace(",","."))  # mm
                     if str(self.doc.Topology.combobox[case][3][thickness_id].Thickness).split()[1] != "mm":
                         raise Exception(" units not recognised in " +
                                         self.doc.Topology.combobox[case][3][thickness_id].Name)
