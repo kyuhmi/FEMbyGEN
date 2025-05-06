@@ -1,7 +1,7 @@
 import FreeCAD
 import FreeCADGui
 import PySide
-from PySide2.QtWidgets import  QTableWidgetItem
+from PySide.QtGui import QTableWidgetItem
 import matplotlib.pyplot as plt
 import os.path
 import numpy as np
