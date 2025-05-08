@@ -15,7 +15,6 @@ import shutil
 from multiprocessing import cpu_count
 
 
-
 def makeTopology():
     def attach(self, vobj):
         self.ViewObject = vobj
@@ -470,23 +469,31 @@ class TopologyPanel(QtGui.QWidget):
         self.form.domainList_3.setCurrentRow(0)
 
     def selectFile(self):
-
         case_number = self.form.selectLC.currentIndex()
-        path = self.doc.Topology.combobox[case_number][1]
-        self.form.fileName.setText(path)
 
-        #clear old definitions
-        for k in range(1, 4):
-                getattr(self.form, f"selectMaterial_{k}").clear()
-                getattr(self.form, f"thicknessObject_{k}").clear()
+        # safety check: combo box must exist and index must be valid
+        if not hasattr(self.doc.Topology, 'combobox') or not self.doc.Topology.combobox or case_number < 0 or case_number >= len(self.doc.Topology.combobox):
+            raise Exception("combo box dne or index is invalid")
 
-        for i in self.doc.Topology.combobox[case_number][2]:
-            for j in range(1, 4):
-                getattr(self.form, f"selectMaterial_{j}").addItem(i.Name)
+        try:
+            path = self.doc.Topology.combobox[case_number][1]
+            self.form.fileName.setText(path)
 
-        for i in self.doc.Topology.combobox[case_number][3]:
-            for j in range(1, 4):
-                getattr(self.form, f"thicknessObject_{j}").addItem(i.Name)
+            #clear old definitions
+            for k in range(1, 4):
+                    getattr(self.form, f"selectMaterial_{k}").clear()
+                    getattr(self.form, f"thicknessObject_{k}").clear()
+
+            for i in self.doc.Topology.combobox[case_number][2]:
+                for j in range(1, 4):
+                    getattr(self.form, f"selectMaterial_{j}").addItem(i.Name)
+
+            for i in self.doc.Topology.combobox[case_number][3]:
+                for j in range(1, 4):
+                    getattr(self.form, f"thicknessObject_{j}").addItem(i.Name)
+
+        except Exception as e:
+            FreeCAD.Console.PrintError(f"Error in selectFile: {str(e)}\n")
 
     def getAnalysis(self):
         comboBoxItems = []
@@ -528,6 +535,7 @@ class TopologyPanel(QtGui.QWidget):
                         comboBoxItems.append([obj.Name, inppath, material, thickness])
                         self.form.selectLC.addItem(obj.Name)
                     except:
+                        # TODO: Potential infinite loop here?
                         try:
                             for i in self.doc.Topology.combobox:
                                 self.form.selectLC.addItem(i[0])
