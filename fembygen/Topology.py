@@ -5,6 +5,8 @@ from PySide import QtGui, QtCore
 from femtools import ccxtools
 import datetime
 import webbrowser
+
+from fembygen.UnitConverter import UnitConverter
 from fembygen.topology import beso_main
 from fembygen import Common
 import FemGui
@@ -590,6 +592,8 @@ class TopologyPanel(QtGui.QWidget):
         fea.setup_ccx()
         self.doc.Topology.path_calculix = fea.ccx_binary
 
+        unit_parser = UnitConverter()
+
         self.doc.Topology.optimization_base = self.form.optBase.currentText()  # stiffness,heat
         for case in range(len(self.doc.Topology.combobox)):
             for i in range(self.doc.Topology.Number_of_Domains):
@@ -607,237 +611,43 @@ class TopologyPanel(QtGui.QWidget):
                         self.doc.Topology.combobox[case][3][thickness_id].Name
                 else:  # 0 means None thickness selected
                     elset_name = self.doc.Topology.combobox[case][2][elset_id].Name + "Solid"
-                modulus = float(self.doc.Topology.combobox[case][2]
-                                    [elset_id].Material["YoungsModulus"].split()[0].replace(",",".")) * 1000 # kg/(mm*s^2) * 1000 = MPa ?
-                print("modulus",modulus)
-                if self.doc.Topology.combobox[case][2][elset_id].Material["YoungsModulus"].split()[1] != "kg/(mm*s^2)":
-                    if self.doc.Topology.combobox[case][2][elset_id].Material["YoungsModulus"].split()[1] == "GPa": # TODO: figure out
-                        modulus*=1000
-                    else:
-                        raise Exception(f"Units not recognised in: {self.doc.Topology.combobox[elset_id][2][0].Name}")
-                poisson = float(self.doc.Topology.combobox[case][2][elset_id].Material["PoissonRatio"].split()[0].replace(",","."))
+
+                modulus = unit_parser.get_magnitude_for_ccx("YoungsModulus", self.doc.Topology.combobox[case][2]
+                                    [elset_id].Material["YoungsModulus"])
+
+                poisson = unit_parser.get_magnitude_for_ccx("PoissonRatio", self.doc.Topology.combobox[case][2][elset_id].Material["PoissonRatio"])
+
                 try:
-                    density = float(self.doc.Topology.combobox[case][2][elset_id].Material["Density"].split()[
-                        0].replace(",",".")) * 1e+9 * 1e-12  # kg/mm3 -> kg/m3 -> t/mm3 TODO simplify
+                    density = unit_parser.get_magnitude_for_ccx("Density", self.doc.Topology.combobox[case][2][elset_id].Material["Density"])
                     self.doc.Topology.domain_density[analysis] = {elset_name: [density*1e-6, density]}
-                    if self.doc.Topology.combobox[case][2][elset_id].Material["Density"].split()[1] not in ["kg/mm^3", "kg/mm3"]:
-                        raise Exception(" units not recognised in " + self.doc.Topology.combobox[elset_id][2])
                 except KeyError:
                     self.doc.Topology.domain_density[analysis] = {elset_name: [0, 0]}
+
                 try:
-                    conductivity = float(
-                        self.doc.Topology.combobox[case][2][elset_id].Material["ThermalConductivity"].split()[0].replace(",",".")) * 1000  #  mm*kg/(s^3*K) * 1000 = W/m/K ?
-                    if self.doc.Topology.combobox[case][2][elset_id].Material["ThermalConductivity"].split()[1] != "mm*kg/(s^3*K)":
-                        raise Exception(" units not recognised in " +
-                                        self.doc.Topology.combobox[case][2][elset_id].Name)
+                    conductivity = unit_parser.get_magnitude_for_ccx("ThermalConductivity", self.doc.Topology.combobox[case][2][elset_id].Material["ThermalConductivity"])
                 except KeyError:
                     conductivity = 0.
-                try:
-                    try:
-                        unit = self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[1]
-                        print(f"Thermal Expansion Coefficient Unit: {unit}")
-                        
-                        # Eğer birim "µm/m/K" ise "um/m/K" olarak değiştir
-                        unit = unit.replace("µ", "u")
-                    except KeyError:
-                        print("ThermalExpansionCoefficient bilgisi bulunamadi.")
 
-                    if unit == "um/m/K":
-                        expansion = float(self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[
-                            0].replace(",", ".")) * 1e-6  # um/m/K -> mm/mm/K
-                    elif unit == "m/m/K":
-                        expansion = float(self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[
-                            0].replace(",", "."))  # m/m/K -> mm/mm/K
-                    elif unit == "1/K":
-                        expansion = float(self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"].split()[
-                            0].replace(",", "."))  # 1/K
-                    else:
-                        raise Exception(" units not recognised in " +
-                                        self.doc.Topology.combobox[case][2][elset_id].Name)
+                try:
+                    expansion = unit_parser.get_magnitude_for_ccx("ThermalExpansionCoefficient", self.doc.Topology.combobox[case][2][elset_id].Material["ThermalExpansionCoefficient"])
                 except KeyError:
                     expansion = 0.
+
                 try:
-                    specific_heat = float(self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"].split()[
-                        0].replace(",",".")) # mm^2/s^2/K
-                    if self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"].split()[1] != "mm^2/(s^2*K)":
-                        raise Exception(" units not recognised in " +
-                                        self.doc.Topology.combobox[case][2][elset_id].Name)
+                    expansion = unit_parser.get_magnitude_for_ccx("SpecificHeat", self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"])
                 except KeyError:
                     specific_heat = 0.
+
                 if thickness_id > -1:
-                    thickness = float(str(self.doc.Topology.combobox[case][3][thickness_id].Thickness).split()[0].replace(",","."))  # mm
-                    if str(self.doc.Topology.combobox[case][3][thickness_id].Thickness).split()[1] != "mm":
-                        raise Exception(" units not recognised in " +
-                                        self.doc.Topology.combobox[case][3][thickness_id].Name)
+                    thickness = unit_parser.get_magnitude_for_ccx("Thickness", self.doc.Topology.combobox[case][3][thickness_id].Thickness)
                 else:
                     thickness = 0
+
                 optimized = self.form.asDesign_checkbox_1.isChecked()
                 if self.form.stressLimit_1.text():
                     von_mises = float(self.form.stressLimit_1.text())
                 else:
                     von_mises = 0.
-
-        #         if self.doc.Topology.Number_of_Domains == 2:
-        #             elset_id1 = self.form.selectMaterial_2.currentIndex() - 1
-        #             thickness_id1 = self.form.thicknessObject_2.currentIndex() - 1
-
-        #             if elset_id1 != -1:
-        #                 if thickness_id1 > -1:
-        #                     elset1 = self.doc.Topology.combobox[case][elset_id1].Name + self.thicknesses[thickness_id1].Name
-        #                 else:  # 0 means None thickness selected
-        #                     elset1 = self.materials[elset_id1].Name + "Solid"
-        #                 modulus1 = float(self.materials[elset_id1].Material["YoungsModulus"].split()[0])  # MPa
-        #                 if self.materials[elset_id1].Material["YoungsModulus"].split()[1] != "MPa":
-        #                     raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #                 poisson1 = float(self.materials[elset_id1].Material["PoissonRatio"].split()[0])
-        #                 try:
-        #                     density1 = float(self.materials[elset_id1].Material["Density"].split()[0]) * 1e-12  # kg/m3 -> t/mm3
-        #                     if self.materials[elset_id1].Material["Density"].split()[1] not in ["kg/m^3", "kg/m3"]:
-        #                         raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #                 except KeyError:
-        #                     density1 = 0.
-        #                 try:
-        #                     conductivity1 = float(self.materials[elset_id1].Material["ThermalConductivity"].split()[0])  # W/m/K
-        #                     if self.materials[elset_id1].Material["ThermalConductivity"].split()[1] != "W/m/K":
-        #                         raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #                 except KeyError:
-        #                     conductivity1 = 0.
-        #                 try:
-        #                     if self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[1] == "um/m/K":
-        #                         expansion1 = float(self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[
-        #                             0]) * 1e-6  # um/m/K -> mm/mm/K
-        #                     elif self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[1] == "m/m/K":
-        #                         expansion1 = float(self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[
-        #                             0])  # m/m/K -> mm/mm/K
-        #                     else:
-        #                         raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #                 except KeyError:
-        #                     expansion1 = 0.
-        #                 try:
-        #                     specific_heat1 = float(self.materials[elset_id1].Material["SpecificHeat"].split()[
-        #                         0]) * 1e6  # J/kg/K -> mm^2/s^2/K
-        #                     if self.materials[elset_id1].Material["SpecificHeat"].split()[1] != "J/kg/K":
-        #                         raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #                 except KeyError:
-        #                     specific_heat1 = 0.
-        #                 if thickness_id1 > -1:
-        #                     thickness1 = str(self.thicknesses[thickness_id1].Thickness).split()[0]  # mm
-        #                     if str(self.thicknesses[thickness_id1].Thickness).split()[1] != "mm":
-        #                         raise Exception(" units not recognised in " + self.thicknesses[thickness_id1].Name)
-        #                 else:
-        #                     thickness1 = 0.
-        #                 optimized1 = self.form.asDesign_checkbox_2.isChecked()
-        #                 if self.form.stressLimit_2.text():
-        #                     von_mises1 = float(self.form.stressLimit_2.text())
-        #                 else:
-        #                     von_mises1 = 0.
-        # if self.doc.Topology.Number_of_Domains == 3:
-        #     elset_id1 = self.form.selectMaterial_2.currentIndex() - 1
-        #     thickness_id1 = self.form.thicknessObject_2.currentIndex() - 1
-
-        #     if elset_id1 != -1:
-        #         if thickness_id1 > -1:
-        #             elset1 = self.materials[elset_id1].Name + self.thicknesses[thickness_id1].Name
-        #         else:  # 0 means None thickness selected
-        #             elset1 = self.materials[elset_id1].Name + "Solid"
-        #         modulus1 = float(self.materials[elset_id1].Material["YoungsModulus"].split()[0])  # MPa
-        #         if self.materials[elset_id1].Material["YoungsModulus"].split()[1] != "MPa":
-        #             raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #         poisson1 = float(self.materials[elset_id1].Material["PoissonRatio"].split()[0])
-        #         try:
-        #             density1 = float(self.materials[elset_id1].Material["Density"].split()[0]) * 1e-12  # kg/m3 -> t/mm3
-        #             if self.materials[elset_id1].Material["Density"].split()[1] not in ["kg/m^3", "kg/m3"]:
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #         except KeyError:
-        #             density1 = 0.
-        #         try:
-        #             conductivity1 = float(self.materials[elset_id1].Material["ThermalConductivity"].split()[0])  # W/m/K
-        #             if self.materials[elset_id1].Material["ThermalConductivity"].split()[1] != "W/m/K":
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #         except KeyError:
-        #             conductivity1 = 0.
-        #         try:
-        #             if self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[1] == "um/m/K":
-        #                 expansion1 = float(self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[
-        #                     0]) * 1e-6  # um/m/K -> mm/mm/K
-        #             elif self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[1] == "m/m/K":
-        #                 expansion1 = float(self.materials[elset_id1].Material["ThermalExpansionCoefficient"].split()[
-        #                     0])  # m/m/K -> mm/mm/K
-        #             else:
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #         except KeyError:
-        #             expansion1 = 0.
-        #         try:
-        #             specific_heat1 = float(self.materials[elset_id1].Material["SpecificHeat"].split()[
-        #                 0]) * 1e6  # J/kg/K -> mm^2/s^2/K
-        #             if self.materials[elset_id1].Material["SpecificHeat"].split()[1] != "J/kg/K":
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id1].Name)
-        #         except KeyError:
-        #             specific_heat1 = 0.
-        #         if thickness_id1 > -1:
-        #             thickness1 = str(self.thicknesses[thickness_id1].Thickness).split()[0]  # mm
-        #             if str(self.thicknesses[thickness_id1].Thickness).split()[1] != "mm":
-        #                 raise Exception(" units not recognised in " + self.thicknesses[thickness_id1].Name)
-        #         else:
-        #             thickness1 = 0.
-        #         optimized1 = self.form.asDesign_checkbox_2.isChecked()
-        #         if self.form.stressLimit_2.text():
-        #             von_mises1 = float(self.form.stressLimit_2.text())
-        #         else:
-        #             von_mises1 = 0.
-
-        #     elset_id2 = self.form.selectMaterial_3.currentIndex() - 1
-        #     thickness_id2 = self.form.thicknessObject_3.currentIndex() - 1
-        #     if elset_id2 != -1:
-        #         if thickness_id2 > -1:
-        #             elset2 = self.materials[elset_id2].Name + self.thicknesses[thickness_id2].Name
-        #         else:  # 0 means None thickness selected
-        #             elset2 = self.materials[elset_id2].Name + "Solid"
-        #         modulus2 = float(self.materials[elset_id2].Material["YoungsModulus"].split()[0])  # MPa
-        #         if self.materials[elset_id2].Material["YoungsModulus"].split()[1] != "MPa":
-        #             raise Exception(" units not recognised in " + self.materials[elset_id2].Name)
-        #         poisson2 = float(self.materials[elset_id2].Material["PoissonRatio"].split()[0])
-        #         try:
-        #             density2 = float(self.materials[elset_id2].Material["Density"].split()[0]) * 1e-12  # kg/m3 -> t/mm3
-        #             if self.materials[elset_id2].Material["Density"].split()[1] not in ["kg/m^3", "kg/m3"]:
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id2].Name)
-        #         except KeyError:
-        #             density2 = 0.
-        #         try:
-        #             conductivity2 = float(self.materials[elset_id2].Material["ThermalConductivity"].split()[0])  # W/m/K
-        #             if self.materials[elset_id2].Material["ThermalConductivity"].split()[1] != "W/m/K":
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id2].Name)
-        #         except KeyError:
-        #             conductivity2 = 0.
-        #         try:
-        #             if self.materials[elset_id2].Material["ThermalExpansionCoefficient"].split()[1] == "um/m/K":
-        #                 expansion2 = float(self.materials[elset_id2].Material["ThermalExpansionCoefficient"].split()[
-        #                     0]) * 1e-6  # um/m/K -> mm/mm/K
-        #             elif self.materials[elset_id2].Material["ThermalExpansionCoefficient"].split()[1] == "m/m/K":
-        #                 expansion2 = float(self.materials[elset_id2].Material["ThermalExpansionCoefficient"].split()[
-        #                     0])  # m/m/K -> mm/mm/K
-        #             else:
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id2].Name)
-        #         except KeyError:
-        #             expansion2 = 0.
-        #         try:
-        #             specific_heat2 = float(self.materials[elset_id2].Material["SpecificHeat"].split()[
-        #                 0]) * 1e6  # J/kg/K -> mm^2/s^2/K
-        #             if self.materials[elset_id2].Material["SpecificHeat"].split()[1] != "J/kg/K":
-        #                 raise Exception(" units not recognised in " + self.materials[elset_id2].Name)
-        #         except KeyError:
-        #             specific_heat2 = 0.
-        #         if thickness_id2 > -1:
-        #             thickness2 = str(self.thicknesses[thickness_id2].Thickness).split()[0]  # mm
-        #             if str(self.thicknesses[thickness_id2].Thickness).split()[1] != "mm":
-        #                 raise Exception(" units not recognised in " + self.thicknesses[thickness_id2].Name)
-        #         else:
-        #             thickness2 = 0.
-        #         optimized2 = self.form.asDesign_checkbox_3.isChecked()
-        #         if self.form.stressLimit_3.text():
-        #             von_mises2 = float(self.form.stressLimit_3.text())
-        #         else:
-                    # von_mises2 = 0.
 
             self.doc.Topology.domain_material[analysis] = {elset_name: [
                 modulus, poisson, density, conductivity, expansion, specific_heat]}

@@ -18,5 +18,6 @@
             <tag>spreadsheet</tag>
         </workbench>
         <depend>scipy</depend>
+        <depend>pint</depend>
     </content>
 </package>
