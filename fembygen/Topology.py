@@ -634,7 +634,7 @@ class TopologyPanel(QtGui.QWidget):
                     expansion = 0.
 
                 try:
-                    expansion = unit_parser.get_magnitude_for_ccx("SpecificHeat", self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"])
+                    specific_heat = unit_parser.get_magnitude_for_ccx("SpecificHeat", self.doc.Topology.combobox[case][2][elset_id].Material["SpecificHeat"])
                 except KeyError:
                     specific_heat = 0.
 
