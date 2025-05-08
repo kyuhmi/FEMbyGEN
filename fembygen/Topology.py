@@ -349,7 +349,7 @@ class TopologyPanel(QtGui.QWidget):
             self.domains3()
 
     def domains1(self):
-        if not self.doc.Topology.combobox[0][3]:
+        if not self.doc.Topology.combobox or not self.doc.Topology.combobox[0][3]:
             self.form.thicknessObject_1.setVisible(False)
             self.form.labelThickness.setVisible(False)
         self.form.domain_2.setVisible(False)
@@ -496,67 +496,78 @@ class TopologyPanel(QtGui.QWidget):
             FreeCAD.Console.PrintError(f"Error in selectFile: {str(e)}\n")
 
     def getAnalysis(self):
-        comboBoxItems = []
+        combo_box_items = []
+
+        # TODO: possible error here?
         self.doc.Topology.combobox = []
         self.form.selectLC.clear()
 
+        # if combobox not empty, what does it do?
         if self.doc.Topology.combobox:
             for i in self.doc.Topology.combobox:
                 self.form.selectLC.addItem(i[0])
                 self.selectFile()
             return
+
+        # do topo folders exist? clean if so.
+        folders = glob.glob(self.workingDir + "/TopologyCase*")
+        if folders:
+            FreeCAD.Console.PrintMessage("Target path has previous files. Old files are deleted.\n")
+            for folder in folders:
+                try:
+                    shutil.rmtree(folder)
+                except Exception as e:
+                    FreeCAD.Console.PrintError(f"Error removing folder {folder}: {str(e)}\n")
+
         lc = 0
         print(self.doc.Name)
         for obj in self.doc.Objects:
             try:
                 if obj.TypeId == "Fem::FemAnalysis":  # to choose analysis objects
+                    FreeCAD.Console.PrintMessage(f"Fem::FemAnalysis object identified: {obj.Name}")
                     lc += 1
                     FemGui.setActiveAnalysis(obj)
-                    analysisfolder = os.path.join(
-                        self.workingDir + f"/TopologyCase_{lc}")
+                    analysis_folder = os.path.join(self.workingDir + f"/TopologyCase_{lc}")
                     try:
-                        os.mkdir(analysisfolder)
-                        try:
-                            fea = ccxtools.FemToolsCcx(analysis=obj)
-                        except:
+                        os.mkdir(analysis_folder)
 
-                            import ObjectsFem
-                            obj.addObject(ObjectsFem.makeSolverCalculixCcxTools(self.doc))
-                            fea = ccxtools.FemToolsCcx(analysis=obj)
+                        # set up fea
+                        # try:
+                        #     fea = ccxtools.FemToolsCcx(analysis=obj)
+                        # except:
+                        #     import ObjectsFem
+                        #     obj.addObject(ObjectsFem.makeSolverCalculixCcxTools(self.doc))
+                        #     fea = ccxtools.FemToolsCcx(analysis=obj)
 
-                        fea.setup_working_dir(analysisfolder)
+                        fea = ccxtools.FemToolsCcx(analysis=obj)
+
+                        fea.setup_working_dir(analysis_folder)
                         fea.update_objects()
                         fea.setup_ccx()
-
                         fea.purge_results()
                         fea.write_inp_file()
+
                         material, thickness = self.getAnalysisObjects(obj)
-                        inppath = glob.glob(analysisfolder+"/*.inp")[0]
-                        comboBoxItems.append([obj.Name, inppath, material, thickness])
-                        self.form.selectLC.addItem(obj.Name)
-                    except:
-                        # TODO: Potential infinite loop here?
-                        try:
-                            for i in self.doc.Topology.combobox:
-                                self.form.selectLC.addItem(i[0])
-                            self.selectFile()
-                            return
-                        except:
-                            FreeCAD.Console.PrintMessage("Target path has previous files. Old files are deleted.")
-                            folders = glob.glob(self.workingDir + "/TopologyCase*")
+                        input_files = glob.glob(analysis_folder+"/*.inp")
 
-                            for i in folders:
-                                shutil.rmtree(i)
+                        if input_files:
+                            input_path = input_files[0]
+                            combo_box_items.append([obj.Name, input_path, material, thickness])
+                            self.form.selectLC.addItem(obj.Name)
+                        else:
+                            FreeCAD.Console.PrintError(f"No .inp file found for {obj.Name}\n")
 
-                            self.getAnalysis()
-
-                            return
+                    except Exception as e:
+                        import traceback
+                        FreeCAD.Console.PrintError(f"Error processing analysis {obj.Name}: {str(e)}\n")
+                        FreeCAD.Console.PrintError(f"Traceback: {traceback.format_exc()}\n")
             except:
                 # it counts deleted objects and gives error.
                 pass
 
-        self.doc.Topology.combobox = comboBoxItems
-        self.selectFile()
+        self.doc.Topology.combobox = combo_box_items
+        FreeCAD.Console.PrintMessage(f"Init ComboBox items: {combo_box_items}")
+        if combo_box_items: self.selectFile()
 
     def setFilter(self):
         self.doc.Topology.filter_list=[]
@@ -684,6 +695,7 @@ class TopologyPanel(QtGui.QWidget):
         # Run optimization
         self.setConfig()
         self.setFilter()
+        FreeCAD.Console.PrintMessage("Config and filter done, moving on to optimization...")
         analysis = self.form.selectLC.currentText()
         topologyObject = beso_main.BesoMain(analysis)
         topologyObject.main()
