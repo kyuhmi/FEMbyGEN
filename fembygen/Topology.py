@@ -524,22 +524,19 @@ class TopologyPanel(QtGui.QWidget):
         for obj in self.doc.Objects:
             try:
                 if obj.TypeId == "Fem::FemAnalysis":  # to choose analysis objects
-                    FreeCAD.Console.PrintMessage(f"Fem::FemAnalysis object identified: {obj.Name}")
+                    FreeCAD.Console.PrintMessage(f"Fem::FemAnalysis object identified: {obj.Name}\n")
                     lc += 1
                     FemGui.setActiveAnalysis(obj)
                     analysis_folder = os.path.join(self.workingDir + f"/TopologyCase_{lc}")
                     try:
                         os.mkdir(analysis_folder)
 
-                        # set up fea
-                        # try:
-                        #     fea = ccxtools.FemToolsCcx(analysis=obj)
-                        # except:
-                        #     import ObjectsFem
-                        #     obj.addObject(ObjectsFem.makeSolverCalculixCcxTools(self.doc))
-                        #     fea = ccxtools.FemToolsCcx(analysis=obj)
-
-                        fea = ccxtools.FemToolsCcx(analysis=obj)
+                        try:
+                            fea = ccxtools.FemToolsCcx(analysis=obj)
+                        except:
+                            import ObjectsFem
+                            obj.addObject(ObjectsFem.makeSolverCalculixCcxTools(self.doc))
+                            fea = ccxtools.FemToolsCcx(analysis=obj)
 
                         fea.setup_working_dir(analysis_folder)
                         fea.update_objects()
